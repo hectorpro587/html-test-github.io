@@ -7,175 +7,277 @@
   <meta name="description" content="Descubre las capacidades de HTML, CSS y JS!">
   <style>
     :root {
-      --bg: #0f1115;
-      --surface: #171a21;
-      --surface-hover: #1e222b;
-      --border: #2a2f3a;
-      --text: #e6e8ee;
-      --muted: #9aa3b2;
-      --accent: #4f8cff;
-      --accent-2: #7c5cff;
-      --radius: 14px;
+      --text: #111318;
+      --muted: rgba(20, 22, 30, 0.62);
+      --glass: rgba(255, 255, 255, 0.42);
+      --glass-strong: rgba(255, 255, 255, 0.6);
+      --glass-border: rgba(255, 255, 255, 0.7);
+      --shadow: 0 18px 50px rgba(30, 40, 90, 0.18);
+      --accent: #0a84ff;
+      --radius-xl: 32px;
+      --radius-lg: 24px;
+      --radius-pill: 999px;
+      color-scheme: light;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #f5f6fa;
+        --muted: rgba(235, 238, 250, 0.66);
+        --glass: rgba(40, 42, 56, 0.45);
+        --glass-strong: rgba(60, 62, 80, 0.6);
+        --glass-border: rgba(255, 255, 255, 0.14);
+        --shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+        --accent: #0a84ff;
+        color-scheme: dark;
+      }
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    html { scroll-behavior: smooth; }
+
     body {
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
       color: var(--text);
-      line-height: 1.6;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+      line-height: 1.5;
+      overflow-x: hidden;
+      background: #dfe7ff;
+      position: relative;
     }
 
-    /* ---------- Header ---------- */
+    @media (prefers-color-scheme: dark) {
+      body { background: #0b0d18; }
+    }
+
+    /* ---------- Fondo animado con orbes de color ---------- */
+    .bg {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+      background: linear-gradient(160deg, #d7e3ff 0%, #f1dcff 50%, #ffe1d6 100%);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .bg { background: linear-gradient(160deg, #13162a 0%, #1d1131 50%, #2a1424 100%); }
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(70px);
+      opacity: 0.75;
+      animation: drift 18s ease-in-out infinite alternate;
+    }
+    .orb-1 { width: 42vw; height: 42vw; background: #3d8bff; top: -10%; left: -8%; }
+    .orb-2 { width: 36vw; height: 36vw; background: #b56bff; bottom: -12%; right: -6%; animation-delay: -6s; }
+    .orb-3 { width: 26vw; height: 26vw; background: #ff8fa3; top: 40%; left: 45%; animation-delay: -12s; }
+
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(6vw, -4vh) scale(1.1); }
+    }
+
+    /* ---------- Vidrio base reutilizable ---------- */
+    .glass {
+      background: var(--glass);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    }
+
+    /* ---------- Barra superior flotante ---------- */
     header {
+      position: sticky;
+      top: 12px;
+      z-index: 10;
+      margin: 12px auto 0;
+      width: min(calc(100% - 24px), 1100px);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
       gap: 1rem;
-      padding: 1rem 2rem;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-      position: sticky;
-      top: 0;
-      z-index: 10;
+      padding: 0.6rem 0.6rem 0.6rem 1.25rem;
+      border-radius: var(--radius-pill);
     }
 
     .brand {
-      font-size: 1.25rem;
       font-weight: 700;
-      background: linear-gradient(90deg, var(--accent), var(--accent-2));
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
+      font-size: 1.1rem;
+      letter-spacing: -0.01em;
     }
 
     .btn-github {
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.5rem 1rem;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      color: var(--text);
+      padding: 0.55rem 1.1rem;
+      border-radius: var(--radius-pill);
+      background: var(--text);
+      color: var(--bg, #fff);
       text-decoration: none;
-      font-size: 0.95rem;
-      transition: background 0.2s, border-color 0.2s;
+      font-size: 0.92rem;
+      font-weight: 600;
+      transition: transform 0.2s ease, opacity 0.2s ease;
     }
-
-    .btn-github:hover {
-      background: var(--surface-hover);
-      border-color: var(--accent);
+    @media (prefers-color-scheme: dark) {
+      .btn-github { color: #111318; }
     }
-
+    .btn-github:hover { transform: scale(1.04); }
+    .btn-github:active { transform: scale(0.97); }
     .btn-github svg { width: 18px; height: 18px; fill: currentColor; }
 
     /* ---------- Hero ---------- */
     .hero {
+      width: min(calc(100% - 32px), 1100px);
+      margin: 0 auto;
       text-align: center;
-      padding: 4rem 1.5rem 2rem;
+      padding: 5rem 1rem 2.5rem;
     }
 
     .hero h1 {
-      font-size: clamp(2.2rem, 5vw, 3.5rem);
+      font-size: clamp(2.6rem, 7vw, 4.5rem);
       font-weight: 800;
-      margin-bottom: 0.75rem;
+      letter-spacing: -0.035em;
+      line-height: 1.05;
+      margin-bottom: 0.9rem;
+    }
+
+    .hero h1 span {
+      background: linear-gradient(90deg, #0a84ff, #bf5af2, #ff375f);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
     }
 
     .hero p {
       color: var(--muted);
-      font-size: clamp(1rem, 2vw, 1.2rem);
+      font-size: clamp(1.05rem, 2.2vw, 1.3rem);
     }
 
-    /* ---------- Examples ---------- */
+    /* ---------- Tarjetas ---------- */
     main {
-      flex: 1;
-      width: 100%;
-      max-width: 1100px;
+      width: min(calc(100% - 32px), 1100px);
       margin: 0 auto;
-      padding: 1rem 1.5rem 3rem;
+      padding: 1rem 0 3rem;
     }
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 1.5rem;
     }
 
     .card {
+      --mx: 50%;
+      --my: 0%;
+      position: relative;
       display: flex;
       flex-direction: column;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.75rem;
+      padding: 2rem;
+      border-radius: var(--radius-xl);
       text-decoration: none;
       color: inherit;
-      transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+      overflow: hidden;
+      transform-style: preserve-3d;
+      transition: transform 0.35s cubic-bezier(.2,.8,.2,1), box-shadow 0.35s ease;
       opacity: 0;
-      animation: fadeUp 0.6s ease forwards;
+      animation: rise 0.7s cubic-bezier(.2,.8,.2,1) forwards;
     }
 
     .card:nth-child(2) { animation-delay: 0.15s; }
 
-    .card:hover {
-      transform: translateY(-4px);
-      border-color: var(--accent);
-      box-shadow: 0 10px 30px rgba(79, 140, 255, 0.15);
+    /* Brillo especular que sigue al cursor */
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(circle at var(--mx) var(--my), rgba(255,255,255,0.45), transparent 55%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
     }
 
+    .card:hover::before { opacity: 1; }
+    .card:hover { box-shadow: 0 26px 60px rgba(10, 60, 180, 0.22), inset 0 1px 0 rgba(255,255,255,0.6); }
+
     .card-tag {
-      font-size: 0.75rem;
+      align-self: flex-start;
+      font-size: 0.72rem;
+      font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: var(--accent);
-      margin-bottom: 0.5rem;
+      background: rgba(10, 132, 255, 0.12);
+      padding: 0.3rem 0.7rem;
+      border-radius: var(--radius-pill);
+      margin-bottom: 1rem;
     }
 
     .card h2 {
-      font-size: 1.5rem;
+      font-size: 1.7rem;
+      letter-spacing: -0.02em;
       margin-bottom: 0.6rem;
     }
 
     .card p {
       color: var(--muted);
-      font-size: 0.97rem;
+      font-size: 1rem;
       flex: 1;
     }
 
     .card-link {
-      margin-top: 1.25rem;
+      margin-top: 1.5rem;
       font-weight: 600;
       color: var(--accent);
     }
 
-    /* ---------- Footer ---------- */
-    footer {
-      text-align: center;
-      padding: 1.5rem;
-      border-top: 1px solid var(--border);
-      color: var(--muted);
-      font-size: 0.9rem;
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(24px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
+    /* ---------- Pie de página ---------- */
+    footer {
+      width: min(calc(100% - 32px), 1100px);
+      margin: 0 auto 2rem;
+      padding: 1.25rem 1.5rem;
+      border-radius: var(--radius-lg);
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    footer p + p { margin-top: 0.4rem; font-size: 0.82rem; }
+
+    /* ---------- Accesibilidad ---------- */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+      .card { opacity: 1; }
     }
 
     @media (max-width: 600px) {
-      header { padding: 1rem; justify-content: center; text-align: center; }
-      .hero { padding: 3rem 1rem 1.5rem; }
+      header { padding-left: 1rem; }
+      .hero { padding-top: 3.5rem; }
     }
   </style>
 </head>
 <body>
 
-  <header>
+  <div class="bg" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <header class="glass">
     <div class="brand">HtmlTest</div>
     <a class="btn-github" href="https://github.com/hectorpro587" target="_blank" rel="noopener noreferrer">
       <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -193,21 +295,21 @@
   </header>
 
   <section class="hero">
-    <h1>HtmlTest</h1>
+    <h1>HtmlTest <span>✦</span></h1>
     <p>Descubre las capacidades de HTML, CSS y JS!</p>
   </section>
 
   <main>
     <div class="grid">
 
-      <a class="card" href="BouncingBall.html">
+      <a class="card glass" href="BouncingBall.html">
         <span class="card-tag">Demo 3D</span>
         <h2>BouncingBall</h2>
         <p>Una simulación inspirada en la demo Boing Ball de la Commodore Amiga que demuestra que HTML puede renderizar cosas en 3D.</p>
         <span class="card-link">Ver ejemplo →</span>
       </a>
 
-      <a class="card" href="ShipRadar.html">
+      <a class="card glass" href="ShipRadar.html">
         <span class="card-tag">Simulación interactiva</span>
         <h2>ShipRadar</h2>
         <p>Una simulación interactiva de radar de barco que recrea el barrido circular de una pantalla náutica real. Observa cómo aparecen y se desvanecen los ecos de otras embarcaciones y objetos cercanos conforme la antena gira, con controles para ajustar el rango, la velocidad de barrido y la sensibilidad, todo funcionando directamente en el navegador con HTML, CSS y JavaScript.</p>
@@ -217,14 +319,31 @@
     </div>
   </main>
 
-  <footer>
+  <footer class="glass">
     <p>Más ejemplos próximamente, siempre que los límites de uso diario de la IA que uso me lo permitan.</p>
     <p>&copy; <span id="year"></span> hectorpro587</p>
   </footer>
 
   <script>
-    // Muestra el año actual en el pie de página
+    // Año actual en el pie de página
     document.getElementById("year").textContent = new Date().getFullYear();
+
+    // Brillo de cristal que sigue al cursor (o al dedo)
+    document.querySelectorAll(".card").forEach(card => {
+      card.addEventListener("pointermove", e => {
+        const r = card.getBoundingClientRect();
+        const x = ((e.clientX - r.left) / r.width) * 100;
+        const y = ((e.clientY - r.top) / r.height) * 100;
+        card.style.setProperty("--mx", x + "%");
+        card.style.setProperty("--my", y + "%");
+        const rx = (50 - y) / 25;
+        const ry = (x - 50) / 25;
+        card.style.transform = `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg) translateY(-4px)`;
+      });
+      card.addEventListener("pointerleave", () => {
+        card.style.transform = "";
+      });
+    });
   </script>
 
 </body>
