@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commodore Amiga-style 3D Boing Ball Simulation</title>
+  <!-- Tipografías retro estilo Commodore / pixel / técnica -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <!-- Three.js desde CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    /* =====================================================================
+       ESTÉTICA RETRO COMMODORE AMIGA (WORKBENCH / DEMOSCENE 3D)
+       ===================================================================== */
+    :root {
+      --amiga-blue: #0055aa;
+      --amiga-dark-blue: #002b5c;
+      --amiga-white: #ffffff;
+      --amiga-gray: #a0b0c8;
+      --amiga-dark-gray: #222a3a;
+      --amiga-black: #080a12;
+      --amiga-orange: #ff8800;
+      --amiga-magenta: #ff2a85;
+      --amiga-cyan: #00e5ff;
+      --amiga-green: #39ff14;
+      --panel-bg: rgba(10, 16, 34, 0.86);
+      --panel-border: #6c9bd2;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--amiga-black);
+      font-family: 'Space Mono', monospace;
+      color: var(--amiga-white);
+    }
+
+    /* Contenedor principal de pantalla completa */
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+
+    canvas:active {
+      cursor: grabbing;
+    }
+
+    /* Scanlines sutiles para dar atmósfera CRT / monitor 1084S */
+    .crt-overlay {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%,
+        rgba(0, 0, 0, 0.22) 50%
+      );
+      background-size: 100% 4px;
+      opacity: 0.55;
+    }
+
+    /* Barra superior estilo ventana Workbench / AmigaDOS */
+    .hud-header {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      z-index: 10;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .amiga-window-bar {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--amiga-blue);
+      border-top: 2px solid var(--amiga-white);
+      border-left: 2px solid var(--amiga-white);
+      border-bottom: 2px solid var(--amiga-black);
+      border-right: 2px solid var(--amiga-black);
+      padding: 6px 12px;
+      border-radius: 4px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.65);
+    }
+
+    .gadget-box {
+      width: 16px;
+      height: 16px;
+      background: var(--amiga-gray);
+      border-top: 2px solid var(--amiga-white);
+      border-left: 2px solid var(--amiga-white);
+      border-bottom: 2px solid var(--amiga-black);
+      border-right: 2px solid var(--amiga-black);
+      display: grid;
+      place-items: center;
+      font-size: 10px;
+      color: var(--amiga-black);
+      font-weight: bold;
+    }
+
+    .title-text {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(0.65rem, 1.8vw, 0.9rem);
+      letter-spacing: 0.05em;
+      color: var(--amiga-white);
+      text-shadow: 2px 2px 0px var(--amiga-black);
+    }
+
+    .badge-3d {
+      background: var(--amiga-orange);
+      color: var(--amiga-black);
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.55rem;
+      padding: 4px 6px;
+      border-radius: 3px;
+      font-weight: bold;
+    }
+
+    /* Botón para colapsar / expandir panel en móviles o pantallas pequeñas */
+    .toggle-panel-btn {
+      pointer-events: auto;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.62rem;
+      padding: 8px 12px;
+      border-radius: 4px;
+      background: var(--amiga-gray);
+      color: var(--amiga-black);
+      border-top: 2px solid var(--amiga-white);
+      border-left: 2px solid var(--amiga-white);
+      border-bottom: 2px solid var(--amiga-black);
+      border-right: 2px solid var(--amiga-black);
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      transition: transform 0.08s ease;
+    }
+
+    .toggle-panel-btn:active {
+      transform: translateY(2px);
+      border-top: 2px solid var(--amiga-black);
+      border-left: 2px solid var(--amiga-black);
+      border-bottom: 2px solid var(--amiga-white);
+      border-right: 2px solid var(--amiga-white);
+    }
+
+    /* Panel de control flotante */
+    .control-panel {
+      position: fixed;
+      top: 64px;
+      right: 12px;
+      width: min(350px, calc(100vw - 24px));
+      max-height: calc(100vh - 84px);
+      overflow-y: auto;
+      z-index: 10;
+      background: var(--panel-bg);
+      backdrop-filter: blur(8px);
+      border-top: 2px solid var(--panel-border);
+      border-left: 2px solid var(--panel-border);
+      border-bottom: 2px solid var(--amiga-black);
+      border-right: 2px solid var(--amiga-black);
+      border-radius: 6px;
+      padding: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75);
+      transition: transform 0.22s ease, opacity 0.22s ease;
+    }
+
+    .control-panel.collapsed {
+      transform: translateX(calc(100% + 24px));
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Scrollbar discreta */
+    .control-panel::-webkit-scrollbar {
+      width: 6px;
+    }
+    .control-panel::-webkit-scrollbar-thumb {
+      background: var(--amiga-blue);
+      border-radius: 3px;
+    }
+
+    .section-block {
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(108, 155, 210, 0.25);
+    }
+
+    .section-block:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .section-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.6rem;
+      color: var(--amiga-cyan);
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Sliders personalizados estilo retro */
+    .slider-row {
+      margin-bottom: 10px;
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      margin-bottom: 4px;
+      color: #dce8ff;
+    }
+
+    .slider-val {
+      color: var(--amiga-orange);
+      font-weight: 700;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      background: var(--amiga-dark-gray);
+      border: 1px solid var(--panel-border);
+      border-radius: 4px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 18px;
+      background: var(--amiga-orange);
+      border-top: 2px solid #ffd29d;
+      border-left: 2px solid #ffd29d;
+      border-bottom: 2px solid #662e00;
+      border-right: 2px solid #662e00;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    /* Grilla de botones / switches */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 7px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .amiga-btn {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 8px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      background: var(--amiga-dark-blue);
+      color: var(--amiga-white);
+      border-top: 2px solid #7ab2f5;
+      border-left: 2px solid #7ab2f5;
+      border-bottom: 2px solid var(--amiga-black);
+      border-right: 2px solid var(--amiga-black);
+      transition: transform 0.08s ease, background 0.15s ease;
+      text-align: center;
+    }
+
+    .amiga-btn:hover {
+      background: #0066cc;
+    }
+
+    .amiga-btn:active {
+      transform: translateY(1px);
+    }
+
+    .amiga-btn.active {
+      background: var(--amiga-orange);
+      color: var(--amiga-black);
+      border-top: 2px solid #ffe0b2;
+      border-left: 2px solid #ffe0b2;
+      border-bottom: 2px solid #5a2800;
+      border-right: 2px solid #5a2800;
+    }
+
+    .btn-impulse {
+      background: linear-gradient(180deg, #ff2a85 0%, #b80f58 100%);
+      color: #ffffff;
+      border-top: 2px solid #ff9ec7;
+      border-left: 2px solid #ff9ec7;
+    }
+
+    .btn-impulse:hover {
+      background: linear-gradient(180deg, #ff4796 0%, #d11364 100%);
+    }
+
+    .btn-reset {
+      background: linear-gradient(180deg, #00b8d4 0%, #007c91 100%);
+      color: #041218;
+      border-top: 2px solid #a7ffeb;
+      border-left: 2px solid #a7ffeb;
+    }
+
+    /* Ayuda / estado inferior */
+    .bottom-hint {
+      position: fixed;
+      bottom: 10px;
+      left: 12px;
+      z-index: 9;
+      background: rgba(8, 12, 24, 0.78);
+      border: 1px solid rgba(108, 155, 210, 0.35);
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: 0.68rem;
+      color: #b7c9e8;
+      pointer-events: none;
+      max-width: calc(100vw - 24px);
+    }
+
+    .status-toast {
+      position: fixed;
+      bottom: 44px;
+      left: 12px;
+      z-index: 12;
+      background: var(--amiga-blue);
+      color: var(--amiga-white);
+      border: 1px solid var(--amiga-white);
+      border-radius: 4px;
+      padding: 5px 10px;
+      font-size: 0.7rem;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none;
+    }
+
+    .status-toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 640px) {
+      .control-panel {
+        top: 58px;
+        right: 12px;
+        left: 12px;
+        width: auto;
+      }
+      .control-panel.collapsed {
+        transform: translateY(calc(-100% - 70px));
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Contenedor del lienzo WebGL / Three.js -->
+  <div id="canvas-container"></div>
+
+  <!-- Efecto sutil de scanlines CRT -->
+  <div class="crt-overlay"></div>
+
+  <!-- Cabecera estilo Amiga Workbench -->
+  <header class="hud-header">
+    <div class="amiga-window-bar">
+      <div class="gadget-box">■</div>
+      <span class="title-text">BouncingBall</span>
+      <span class="badge-3d">AMIGA 1000 • 1984</span>
+    </div>
+
+    <button id="toggle-panel-btn" class="toggle-panel-btn" type="button">
+      CONTROLES [−]
+    </button>
+  </header>
+
+  <!-- Notificación no intrusiva (sin alert()) -->
+  <div id="status-toast" class="status-toast"></div>
+
+  <!-- Panel de controles interactivos -->
+  <aside id="control-panel" class="control-panel">
+    <!-- Sección 1: Física -->
+    <div class="section-block">
+      <div class="section-title">
+        <span>FÍSICA 3D</span>
+        <span id="fps-counter" style="color: var(--amiga-green);">60 FPS</span>
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-label">
+          <span>Gravedad</span>
+          <span id="val-gravity" class="slider-val">18.0 m/s²</span>
+        </div>
+        <input id="slider-gravity" type="range" min="2" max="40" step="0.5" value="18" />
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-label">
+          <span>Elasticidad (Rebote)</span>
+          <span id="val-restitution" class="slider-val">0.84</span>
+        </div>
+        <input id="slider-restitution" type="range" min="0.2" max="0.99" step="0.01" value="0.84" />
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-label">
+          <span>Velocidad Rotación</span>
+          <span id="val-spin" class="slider-val">2.4 rad/s</span>
+        </div>
+        <input id="slider-spin" type="range" min="0" max="10" step="0.2" value="2.4" />
+      </div>
+    </div>
+
+    <!-- Sección 2: Escenario y efectos -->
+    <div class="section-block">
+      <div class="section-title">ESCENARIO &amp; EFECTOS</div>
+      <div class="grid-2">
+        <button id="btn-grid" class="amiga-btn active" type="button">Cuadrícula: ON</button>
+        <button id="btn-bounds" class="amiga-btn active" type="button">Límites: ON</button>
+        <button id="btn-trail" class="amiga-btn active" type="button">Estela: ON</button>
+        <button id="btn-sound" class="amiga-btn active" type="button">Audio Retro: ON</button>
+      </div>
+    </div>
+
+    <!-- Sección 3: Cámaras -->
+    <div class="section-block">
+      <div class="section-title">CÁMARA ORBITAL / VISTAS</div>
+      <div class="grid-3">
+        <button id="cam-classic" class="amiga-btn active" type="button">Clásica</button>
+        <button id="cam-low" class="amiga-btn" type="button">Rasante</button>
+        <button id="cam-top" class="amiga-btn" type="button">Cenital</button>
+      </div>
+    </div>
+
+    <!-- Sección 4: Acciones rápidas -->
+    <div class="section-block">
+      <div class="section-title">ACCIONES</div>
+      <div class="grid-2">
+        <button id="btn-impulse" class="amiga-btn btn-impulse" type="button">⚡ Impulsar Bola</button>
+        <button id="btn-reset" class="amiga-btn btn-reset" type="button">↺ Reiniciar</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Guía rápida en la parte inferior -->
+  <footer class="bottom-hint">
+    Arrastra para orbitar cámara • Rueda/pellizco para zoom • Clic en la bola o "Impulsar" para darle energía
+  </footer>
+
+  <script>
+    /* =====================================================================
+       SINTETIZADOR DE AUDIO RETRO CON WEB AUDIO API (SIN ARCHIVOS EXTERNOS)
+       ===================================================================== */
+    class RetroAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      ensureContext() {
+        if (!this.enabled) return null;
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) {
+            this.ctx = new AudioCtx();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+        return this.ctx;
+      }
+
+      /**
+       * Genera un sonido sintetizado de rebote estilo chip de sonido / synth retro.
+       * @param {number} intensity - Valor normalizado ~0.1 a 1.0 según velocidad de impacto.
+       * @param {boolean} isWall - Si el rebote fue contra una pared o límite lateral.
+       */
+      playBounce(intensity = 0.6, isWall = false) {
+        const ctx = this.ensureContext();
+        if (!ctx) return;
+
+        try {
+          const now = ctx.currentTime;
+          const clamped = Math.max(0.08, Math.min(1.0, intensity));
+
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          // Onda triangular o cuadrada suave para estética retro Amiga / Paula
+          osc.type = isWall ? 'square' : 'triangle';
+
+          const baseFreq = isWall ? 190 + clamped * 110 : 110 + clamped * 150;
+          const endFreq = isWall ? 85 : 52;
+
+          osc.frequency.setValueAtTime(baseFreq, now);
+          osc.frequency.exponentialRampToValueAtTime(Math.max(30, endFreq), now + 0.13);
+
+          const peakGain = 0.22 * clamped;
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(peakGain, now + 0.012);
+          gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.14);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } catch (err) {
+          console.warn('Error reproduciendo sonido retro:', err);
+        }
+      }
+
+      playImpulse() {
+        const ctx = this.ensureContext();
+        if (!ctx) return;
+        try {
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.exponentialRampToValueAtTime(520, now + 0.12);
+
+          gain.gain.setValueAtTime(0.14, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.14);
+        } catch (_) {}
+      }
+    }
+
+    /* =====================================================================
+       GENERACIÓN DE TEXTURA PROCEDURAL BOING BALL (CUADROS ROJOS Y BLANCOS)
+       ===================================================================== */
+    function createBoingBallTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      // En la icónica Boing Ball de 1984:
+      // 16 gajos longitudinales (latitud/longitud) y 8 franjas latitudinales alternadas
+      const cols = 16;
+      const rows = 8;
+      const cellW = canvas.width / cols;
+      const cellH = canvas.height / rows;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const isRed = (r + c) % 2 === 0;
+          ctx.fillStyle = isRed ? '#e6192e' : '#f8f9fc';
+          ctx.fillRect(c * cellW, r * cellH, cellW + 0.5, cellH + 0.5);
+        }
+      }
+
+      // Sutil línea divisoria para dar nitidez gráfica tipo demoscene
+      ctx.strokeStyle = 'rgba(40, 0, 10, 0.18)';
+      ctx.lineWidth = 2;
+      for (let c = 0; c <= cols; c++) {
+        const x = c * cellW;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let r = 0; r <= rows; r++) {
+        const y = r * cellH;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      texture.anisotropy = 8;
+      return texture;
+    }
+
+    /* =====================================================================
+       GENERACIÓN DE TEXTURA DE SOMBRA PROYECTADA EN EL SUELO
+       ===================================================================== */
+    function createShadowTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      const grad = ctx.createRadialGradient(128, 128, 12, 128, 128, 124);
+      grad.addColorStop(0.0, 'rgba(5, 2, 15, 0.78)');
+      grad.addColorStop(0.55, 'rgba(10, 4, 28, 0.38)');
+      grad.addColorStop(1.0, 'rgba(10, 4, 28, 0.0)');
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 256, 256);
+
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    /* =====================================================================
+       GENERACIÓN DE FONDO DEGRADADO RETRO CON ESTRELLAS
+       ===================================================================== */
+    function createRetroSkyTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 1024;
+      const ctx = canvas.getContext('2d');
+
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      skyGrad.addColorStop(0.0, '#050314');
+      skyGrad.addColorStop(0.35, '#130836');
+      skyGrad.addColorStop(0.62, '#341159');
+      skyGrad.addColorStop(0.82, '#7d1e6a');
+      skyGrad.addColorStop(1.0, '#2a0d47');
+
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Sol retro sutil en el horizonte
+      const sunGrad = ctx.createLinearGradient(0, canvas.height * 0.42, 0, canvas.height * 0.72);
+      sunGrad.addColorStop(0.0, 'rgba(255, 210, 90, 0.35)');
+      sunGrad.addColorStop(0.5, 'rgba(255, 85, 130, 0.24)');
+      sunGrad.addColorStop(1.0, 'rgba(255, 42, 133, 0.0)');
+
+      ctx.fillStyle = sunGrad;
+      ctx.beginPath();
+      ctx.arc(canvas.width * 0.5, canvas.height * 0.58, 175, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Estrellas retro de distintos tamaños y brillos
+      let seed = 1984;
+      const rand = () => {
+        seed = (seed * 16807) % 2147483647;
+        return (seed - 1) / 2147483646;
+      };
+
+      for (let i = 0; i < 260; i++) {
+        const x = rand() * canvas.width;
+        const y = rand() * (canvas.height * 0.68);
+        const r = rand() < 0.15 ? 2.2 : 1.1;
+        const alpha = 0.35 + rand() * 0.65;
+        ctx.fillStyle = i % 7 === 0 ? `rgba(0, 229, 255, ${alpha})` : `rgba(255, 255, 255, ${alpha})`;
+        ctx.fillRect(x, y, r, r);
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      return tex;
+    }
+
+    /* =====================================================================
+       APLICACIÓN PRINCIPAL DE SIMULACIÓN 3D
+       ===================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      const container = document.getElementById('canvas-container');
+      const audioEngine = new RetroAudioEngine();
+
+      // Estado de simulación y parámetros ajustables
+      const state = {
+        gravity: 18.0,
+        restitution: 0.84,
+        spinSpeed: 2.4,
+        showGrid: true,
+        showBounds: true,
+        showTrail: true,
+        soundEnabled: true,
+        cameraPreset: 'classic',
+        paused: false
+      };
+
+      // Constantes espaciales de la arena
+      const BALL_RADIUS = 1.45;
+      const FLOOR_Y = 0;
+      const ARENA_HALF_SIZE = 7.5;
+      const ARENA_HEIGHT = 9.0;
+
+      // Escena, cámara y renderer
+      const scene = new THREE.Scene();
+
+      // Cielo esférico retro
+      const skyGeo = new THREE.SphereGeometry(65, 32, 24);
+      const skyMat = new THREE.MeshBasicMaterial({
+        map: createRetroSkyTexture(),
+        side: THREE.BackSide,
+        depthWrite: false
+      });
+      const skyDome = new THREE.Mesh(skyGeo, skyMat);
+      scene.add(skyDome);
+
+      // Niebla sutil en el horizonte para profundidad synthwave/Amiga
+      scene.fog = new THREE.FogExp2(0x1b0b36, 0.022);
+
+      const camera = new THREE.PerspectiveCamera(
+        52,
+        container.clientWidth / Math.max(1, container.clientHeight),
+        0.1,
+        150
+      );
+
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        powerPreference: 'high-performance'
+      });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      /* --- ILUMINACIÓN --- */
+      const ambientLight = new THREE.AmbientLight(0x9cb4ff, 0.65);
+      scene.add(ambientLight);
+
+      // Luz direccional principal con sombras reales
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1.25);
+      dirLight.position.set(8, 16, 10);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 1024;
+      dirLight.shadow.mapSize.height = 1024;
+      dirLight.shadow.camera.near = 2;
+      dirLight.shadow.camera.far = 45;
+      const d = 11;
+      dirLight.shadow.camera.left = -d;
+      dirLight.shadow.camera.right = d;
+      dirLight.shadow.camera.top = d;
+      dirLight.shadow.camera.bottom = -d;
+      scene.add(dirLight);
+
+      // Luz de acento magenta desde el lateral
+      const rimLight = new THREE.PointLight(0xff2a85, 1.4, 28);
+      rimLight.position.set(-9, 5, -7);
+      scene.add(rimLight);
+
+      // Luz cian sutil frontal-inferior
+      const cyanLight = new THREE.PointLight(0x00e5ff, 0.85, 24);
+      cyanLight.position.set(6, 2.5, -8);
+      scene.add(cyanLight);
+
+      /* --- PISO DE CUADRÍCULA MAGENTA / PÚRPURA ESTILO AMIGA --- */
+      const gridGroup = new THREE.Group();
+
+      // Plano oscuro translúcido base para evitar ver estrellas por debajo
+      const floorPlaneGeo = new THREE.PlaneGeometry(36, 36);
+      const floorPlaneMat = new THREE.MeshStandardMaterial({
+        color: 0x120624,
+        roughness: 0.75,
+        metalness: 0.15,
+        transparent: true,
+        opacity: 0.92
+      });
+      const floorPlane = new THREE.Mesh(floorPlaneGeo, floorPlaneMat);
+      floorPlane.rotation.x = -Math.PI / 2;
+      floorPlane.position.y = FLOOR_Y - 0.01;
+      floorPlane.receiveShadow = true;
+      gridGroup.add(floorPlane);
+
+      // Cuadrícula principal magenta brillante
+      const mainGrid = new THREE.GridHelper(30, 20, 0xff2a85, 0xb5179e);
+      mainGrid.position.y = FLOOR_Y;
+      gridGroup.add(mainGrid);
+
+      // Cuadrícula secundaria púrpura más fina
+      const subGrid = new THREE.GridHelper(30, 60, 0x7209b7, 0x480ca8);
+      subGrid.position.y = FLOOR_Y - 0.005;
+      gridGroup.add(subGrid);
+
+      scene.add(gridGroup);
+
+      /* --- LÍMITES / PAREDES SUTILES DE LA ARENA --- */
+      const boundsGroup = new THREE.Group();
+      const borderMat = new THREE.LineBasicMaterial({
+        color: 0xff2a85,
+        transparent: true,
+        opacity: 0.55
+      });
+      const cyanBorderMat = new THREE.LineBasicMaterial({
+        color: 0x00e5ff,
+        transparent: true,
+        opacity: 0.35
+      });
+
+      // Marco base del suelo
+      const basePoints = [
+        new THREE.Vector3(-ARENA_HALF_SIZE, FLOOR_Y + 0.02, -ARENA_HALF_SIZE),
+        new THREE.Vector3(ARENA_HALF_SIZE, FLOOR_Y + 0.02, -ARENA_HALF_SIZE),
+        new THREE.Vector3(ARENA_HALF_SIZE, FLOOR_Y + 0.02, ARENA_HALF_SIZE),
+        new THREE.Vector3(-ARENA_HALF_SIZE, FLOOR_Y + 0.02, ARENA_HALF_SIZE),
+        new THREE.Vector3(-ARENA_HALF_SIZE, FLOOR_Y + 0.02, -ARENA_HALF_SIZE)
+      ];
+      const baseLoop = new THREE.Line(new THREE.BufferGeometry().setFromPoints(basePoints), borderMat);
+      boundsGroup.add(baseLoop);
+
+      // Postes verticales sutiles en las 4 esquinas
+      const corners = [
+        [-ARENA_HALF_SIZE, -ARENA_HALF_SIZE],
+        [ARENA_HALF_SIZE, -ARENA_HALF_SIZE],
+        [ARENA_HALF_SIZE, ARENA_HALF_SIZE],
+        [-ARENA_HALF_SIZE, ARENA_HALF_SIZE]
+      ];
+      corners.forEach(([cx, cz]) => {
+        const pillarPts = [
+          new THREE.Vector3(cx, FLOOR_Y, cz),
+          new THREE.Vector3(cx, ARENA_HEIGHT, cz)
+        ];
+        boundsGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pillarPts), cyanBorderMat));
+      });
+
+      // Paneles laterales muy sutiles para visualizar límites de rebote
+      const wallPlaneGeo = new THREE.PlaneGeometry(ARENA_HALF_SIZE * 2, ARENA_HEIGHT);
+      const wallPlaneMat = new THREE.MeshBasicMaterial({
+        color: 0xff2a85,
+        transparent: true,
+        opacity: 0.035,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+
+      const backWall = new THREE.Mesh(wallPlaneGeo, wallPlaneMat);
+      backWall.position.set(0, ARENA_HEIGHT * 0.5, -ARENA_HALF_SIZE);
+      boundsGroup.add(backWall);
+
+      const frontWall = new THREE.Mesh(wallPlaneGeo, wallPlaneMat);
+      frontWall.position.set(0, ARENA_HEIGHT * 0.5, ARENA_HALF_SIZE);
+      boundsGroup.add(frontWall);
+
+      const leftWall = new THREE.Mesh(wallPlaneGeo, wallPlaneMat);
+      leftWall.rotation.y = Math.PI / 2;
+      leftWall.position.set(-ARENA_HALF_SIZE, ARENA_HEIGHT * 0.5, 0);
+      boundsGroup.add(leftWall);
+
+      const rightWall = new THREE.Mesh(wallPlaneGeo, wallPlaneMat);
+      rightWall.rotation.y = Math.PI / 2;
+      rightWall.position.set(ARENA_HALF_SIZE, ARENA_HEIGHT * 0.5, 0);
+      boundsGroup.add(rightWall);
+
+      scene.add(boundsGroup);
+
+      /* --- BOING BALL 3D (CON SQUASH & STRETCH VIA PIVOTE) --- */
+      // Usamos un contenedor pivote en el centro de la bola para aplicar squash & stretch
+      // y un mesh interior para la rotación continua en su propio eje
+      const ballPivot = new THREE.Group();
+      scene.add(ballPivot);
+
+      const ballGeo = new THREE.SphereGeometry(BALL_RADIUS, 48, 36);
+      const ballMat = new THREE.MeshPhongMaterial({
+        map: createBoingBallTexture(),
+        shininess: 95,
+        specular: new THREE.Color(0xffffff),
+        emissive: new THREE.Color(0x180208),
+        emissiveIntensity: 0.25
+      });
+
+      const ballMesh = new THREE.Mesh(ballGeo, ballMat);
+      ballMesh.castShadow = true;
+      ballMesh.receiveShadow = true;
+      ballPivot.add(ballMesh);
+
+      // Inclinación icónica del eje de la Boing Ball (~18 grados)
+      ballMesh.rotation.z = THREE.MathUtils.degToRad(-18);
+
+      // Sombra proyectada dinámica en el suelo (refuerza percepción de altura)
+      const shadowGeo = new THREE.PlaneGeometry(BALL_RADIUS * 2.4, BALL_RADIUS * 2.4);
+      const shadowMat = new THREE.MeshBasicMaterial({
+        map: createShadowTexture(),
+        transparent: true,
+        depthWrite: false,
+        opacity: 0.85
+      });
+      const groundShadow = new THREE.Mesh(shadowGeo, shadowMat);
+      groundShadow.rotation.x = -Math.PI / 2;
+      groundShadow.position.y = FLOOR_Y + 0.015;
+      scene.add(groundShadow);
+
+      /* --- ESTELA / MOTION TRAIL SUTIL --- */
+      const TRAIL_COUNT = 14;
+      const trailGroup = new THREE.Group();
+      const trailMeshes = [];
+
+      for (let i = 0; i < TRAIL_COUNT; i++) {
+        const ratio = 1 - i / TRAIL_COUNT;
+        const tGeo = new THREE.SphereGeometry(BALL_RADIUS * (0.35 + ratio * 0.55), 16, 12);
+        const tMat = new THREE.MeshBasicMaterial({
+          color: i % 2 === 0 ? 0xff2a85 : 0x00e5ff,
+          transparent: true,
+          opacity: ratio * 0.16,
+          depthWrite: false
+        });
+        const tMesh = new THREE.Mesh(tGeo, tMat);
+        trailGroup.add(tMesh);
+        trailMeshes.push(tMesh);
+      }
+      scene.add(trailGroup);
+
+      /* --- ESTADO FÍSICO DE LA BOLA --- */
+      const ballPhysics = {
+        pos: new THREE.Vector3(0, 5.2, 0),
+        vel: new THREE.Vector3(2.8, 0.0, 1.9),
+        squash: 0.0, // Valor positivo = aplastada verticalmente, negativo = estirada
+        squashVel: 0.0,
+        spinAngle: 0.0
+      };
+
+      // Historial de posiciones para la estela
+      const positionHistory = [];
+      for (let i = 0; i < TRAIL_COUNT; i++) {
+        positionHistory.push(ballPhysics.pos.clone());
+      }
+
+      function resetBall(withImpulse = false) {
+        ballPhysics.pos.set(0, 5.2, 0);
+        if (withImpulse) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 4.2 + Math.random() * 2.2;
+          ballPhysics.vel.set(
+            Math.cos(angle) * speed,
+            6.5 + Math.random() * 3.5,
+            Math.sin(angle) * speed
+          );
+        } else {
+          ballPhysics.vel.set(2.8, 0.0, 1.9);
+        }
+        ballPhysics.squash = 0;
+        ballPhysics.squashVel = 0;
+
+        for (let i = 0; i < TRAIL_COUNT; i++) {
+          positionHistory[i].copy(ballPhysics.pos);
+        }
+        showToast(withImpulse ? '¡Bola impulsada en 3D!' : 'Simulación reiniciada');
+      }
+
+      function impulseBall() {
+        const angle = Math.random() * Math.PI * 2;
+        const horizSpeed = 4.5 + Math.random() * 3.0;
+        ballPhysics.vel.x = Math.cos(angle) * horizSpeed;
+        ballPhysics.vel.z = Math.sin(angle) * horizSpeed;
+        ballPhysics.vel.y = Math.max(ballPhysics.vel.y + 8.5, 9.5);
+        ballPhysics.squash = -0.22; // Ligero estiramiento al recibir impulso
+        audioEngine.playImpulse();
+        showToast('¡Impulso aplicado!');
+      }
+
+      /* =====================================================================
+         CÁMARA ORBITAL SUAVE CON MOUSE Y TOUCH + VISTAS PREDEFINIDAS
+         ===================================================================== */
+      const cameraRig = {
+        target: new THREE.Vector3(0, 2.2, 0),
+        spherical: new THREE.Spherical(15.5, THREE.MathUtils.degToRad(66), THREE.MathUtils.degToRad(34)),
+        desiredSpherical: new THREE.Spherical(15.5, THREE.MathUtils.degToRad(66), THREE.MathUtils.degToRad(34)),
+        isDragging: false,
+        prevX: 0,
+        prevY: 0,
+        pointerDownPos: { x: 0, y: 0 },
+        lastTouchDist: null
+      };
+
+      function setCameraPreset(preset) {
+        state.cameraPreset = preset;
+        document.querySelectorAll('#cam-classic, #cam-low, #cam-top').forEach((btn) => {
+          btn.classList.remove('active');
+        });
+
+        if (preset === 'classic') {
+          document.getElementById('cam-classic').classList.add('active');
+          cameraRig.desiredSpherical.radius = 15.5;
+          cameraRig.desiredSpherical.phi = THREE.MathUtils.degToRad(66);
+          cameraRig.desiredSpherical.theta = THREE.MathUtils.degToRad(34);
+          showToast('Vista: Clásica Amiga');
+        } else if (preset === 'low') {
+          document.getElementById('cam-low').classList.add('active');
+          cameraRig.desiredSpherical.radius = 13.5;
+          cameraRig.desiredSpherical.phi = THREE.MathUtils.degToRad(83);
+          cameraRig.desiredSpherical.theta = THREE.MathUtils.degToRad(18);
+          showToast('Vista: Rasante');
+        } else if (preset === 'top') {
+          document.getElementById('cam-top').classList.add('active');
+          cameraRig.desiredSpherical.radius = 17.5;
+          cameraRig.desiredSpherical.phi = THREE.MathUtils.degToRad(24);
+          cameraRig.desiredSpherical.theta = THREE.MathUtils.degToRad(45);
+          showToast('Vista: Cenital');
+        }
+      }
+
+      function updateCameraFromSpherical(dt) {
+        const lerpFactor = 1 - Math.exp(-7 * dt);
+        cameraRig.spherical.radius = THREE.MathUtils.lerp(
+          cameraRig.spherical.radius,
+          cameraRig.desiredSpherical.radius,
+          lerpFactor
+        );
+        cameraRig.spherical.phi = THREE.MathUtils.lerp(
+          cameraRig.spherical.phi,
+          cameraRig.desiredSpherical.phi,
+          lerpFactor
+        );
+        cameraRig.spherical.theta = THREE.MathUtils.lerp(
+          cameraRig.spherical.theta,
+          cameraRig.desiredSpherical.theta,
+          lerpFactor
+        );
+
+        cameraRig.spherical.makeSafe();
+        const offset = new THREE.Vector3().setFromSpherical(cameraRig.spherical);
+        camera.position.copy(cameraRig.target).add(offset);
+        camera.lookAt(cameraRig.target);
+      }
+
+      // Raycaster para permitir hacer clic/tap directamente sobre la bola e impulsarla
+      const raycaster = new THREE.Raycaster();
+      const pointerNDC = new THREE.Vector2();
+
+      function checkBallClick(clientX, clientY) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointerNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(pointerNDC, camera);
+        const hits = raycaster.intersectObject(ballMesh, false);
+        if (hits.length > 0) {
+          impulseBall();
+        }
+      }
+
+      // Eventos de ratón
+      renderer.domElement.addEventListener('mousedown', (e) => {
+        cameraRig.isDragging = true;
+        cameraRig.prevX = e.clientX;
+        cameraRig.prevY = e.clientY;
+        cameraRig.pointerDownPos = { x: e.clientX, y: e.clientY };
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!cameraRig.isDragging) return;
+        const dx = e.clientX - cameraRig.prevX;
+        const dy = e.clientY - cameraRig.prevY;
+        cameraRig.prevX = e.clientX;
+        cameraRig.prevY = e.clientY;
+
+        const rotSpeed = 0.0065;
+        cameraRig.desiredSpherical.theta -= dx * rotSpeed;
+        cameraRig.desiredSpherical.phi -= dy * rotSpeed;
+        cameraRig.desiredSpherical.phi = THREE.MathUtils.clamp(
+          cameraRig.desiredSpherical.phi,
+          0.18,
+          Math.PI * 0.485
+        );
+      });
+
+      window.addEventListener('mouseup', (e) => {
+        if (!cameraRig.isDragging) return;
+        cameraRig.isDragging = false;
+        const moved = Math.hypot(
+          e.clientX - cameraRig.pointerDownPos.x,
+          e.clientY - cameraRig.pointerDownPos.y
+        );
+        if (moved < 6) {
+          checkBallClick(e.clientX, e.clientY);
+        }
+      });
+
+      // Zoom con rueda del ratón
+      renderer.domElement.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        cameraRig.desiredSpherical.radius += e.deltaY * 0.012;
+        cameraRig.desiredSpherical.radius = THREE.MathUtils.clamp(
+          cameraRig.desiredSpherical.radius,
+          7.5,
+          28.0
+        );
+      }, { passive: false });
+
+      // Eventos táctiles (orbitar con 1 dedo, zoom con 2 dedos)
+      renderer.domElement.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          cameraRig.isDragging = true;
+          cameraRig.prevX = e.touches[0].clientX;
+          cameraRig.prevY = e.touches[0].clientY;
+          cameraRig.pointerDownPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        } else if (e.touches.length === 2) {
+          cameraRig.isDragging = false;
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          cameraRig.lastTouchDist = Math.hypot(dx, dy);
+        }
+      }, { passive: true });
+
+      renderer.domElement.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1 && cameraRig.isDragging) {
+          const dx = e.touches[0].clientX - cameraRig.prevX;
+          const dy = e.touches[0].clientY - cameraRig.prevY;
+          cameraRig.prevX = e.touches[0].clientX;
+          cameraRig.prevY = e.touches[0].clientY;
+
+          const rotSpeed = 0.008;
+          cameraRig.desiredSpherical.theta -= dx * rotSpeed;
+          cameraRig.desiredSpherical.phi -= dy * rotSpeed;
+          cameraRig.desiredSpherical.phi = THREE.MathUtils.clamp(
+            cameraRig.desiredSpherical.phi,
+            0.18,
+            Math.PI * 0.485
+          );
+        } else if (e.touches.length === 2 && cameraRig.lastTouchDist) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const dist = Math.hypot(dx, dy);
+          const delta = (cameraRig.lastTouchDist - dist) * 0.03;
+          cameraRig.lastTouchDist = dist;
+          cameraRig.desiredSpherical.radius = THREE.MathUtils.clamp(
+            cameraRig.desiredSpherical.radius + delta,
+            7.5,
+            28.0
+          );
+        }
+      }, { passive: true });
+
+      renderer.domElement.addEventListener('touchend', (e) => {
+        if (e.changedTouches.length === 1 && cameraRig.isDragging) {
+          const t = e.changedTouches[0];
+          const moved = Math.hypot(
+            t.clientX - cameraRig.pointerDownPos.x,
+            t.clientY - cameraRig.pointerDownPos.y
+          );
+          if (moved < 8) {
+            checkBallClick(t.clientX, t.clientY);
+          }
+        }
+        cameraRig.isDragging = false;
+        cameraRig.lastTouchDist = null;
+      });
+
+      /* =====================================================================
+         CONTROLES DE INTERFAZ Y TOAST DE ESTADO
+         ===================================================================== */
+      const toastEl = document.getElementById('status-toast');
+      let toastTimer = null;
+      function showToast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toastEl.classList.remove('show');
+        }, 1600);
+      }
+
+      // Colapsar / expandir panel
+      const panelEl = document.getElementById('control-panel');
+      const togglePanelBtn = document.getElementById('toggle-panel-btn');
+      let panelOpen = true;
+      togglePanelBtn.addEventListener('click', () => {
+        panelOpen = !panelOpen;
+        panelEl.classList.toggle('collapsed', !panelOpen);
+        togglePanelBtn.textContent = panelOpen ? 'CONTROLES [−]' : 'CONTROLES [+]';
+      });
+
+      // Sliders
+      const sliderGravity = document.getElementById('slider-gravity');
+      const valGravity = document.getElementById('val-gravity');
+      sliderGravity.addEventListener('input', (e) => {
+        state.gravity = parseFloat(e.target.value);
+        valGravity.textContent = `${state.gravity.toFixed(1)} m/s²`;
+      });
+
+      const sliderRestitution = document.getElementById('slider-restitution');
+      const valRestitution = document.getElementById('val-restitution');
+      sliderRestitution.addEventListener('input', (e) => {
+        state.restitution = parseFloat(e.target.value);
+        valRestitution.textContent = state.restitution.toFixed(2);
+      });
+
+      const sliderSpin = document.getElementById('slider-spin');
+      const valSpin = document.getElementById('val-spin');
+      sliderSpin.addEventListener('input', (e) => {
+        state.spinSpeed = parseFloat(e.target.value);
+        valSpin.textContent = `${state.spinSpeed.toFixed(1)} rad/s`;
+      });
+
+      // Botones de escenario y audio
+      const btnGrid = document.getElementById('btn-grid');
+      btnGrid.addEventListener('click', () => {
+        state.showGrid = !state.showGrid;
+        gridGroup.visible = state.showGrid;
+        btnGrid.classList.toggle('active', state.showGrid);
+        btnGrid.textContent = `Cuadrícula: ${state.showGrid ? 'ON' : 'OFF'}`;
+      });
+
+      const btnBounds = document.getElementById('btn-bounds');
+      btnBounds.addEventListener('click', () => {
+        state.showBounds = !state.showBounds;
+        boundsGroup.visible = state.showBounds;
+        btnBounds.classList.toggle('active', state.showBounds);
+        btnBounds.textContent = `Límites: ${state.showBounds ? 'ON' : 'OFF'}`;
+      });
+
+      const btnTrail = document.getElementById('btn-trail');
+      btnTrail.addEventListener('click', () => {
+        state.showTrail = !state.showTrail;
+        trailGroup.visible = state.showTrail;
+        btnTrail.classList.toggle('active', state.showTrail);
+        btnTrail.textContent = `Estela: ${state.showTrail ? 'ON' : 'OFF'}`;
+      });
+
+      const btnSound = document.getElementById('btn-sound');
+      btnSound.addEventListener('click', () => {
+        state.soundEnabled = !state.soundEnabled;
+        audioEngine.enabled = state.soundEnabled;
+        btnSound.classList.toggle('active', state.soundEnabled);
+        btnSound.textContent = `Audio Retro: ${state.soundEnabled ? 'ON' : 'OFF'}`;
+        if (state.soundEnabled) {
+          audioEngine.ensureContext();
+        }
+      });
+
+      // Botones de cámara
+      document.getElementById('cam-classic').addEventListener('click', () => setCameraPreset('classic'));
+      document.getElementById('cam-low').addEventListener('click', () => setCameraPreset('low'));
+      document.getElementById('cam-top').addEventListener('click', () => setCameraPreset('top'));
+
+      // Botones de acción
+      document.getElementById('btn-impulse').addEventListener('click', impulseBall);
+      document.getElementById('btn-reset').addEventListener('click', () => resetBall(false));
+
+      /* =====================================================================
+         REDIMENSIÓN RESPONSIVA DE VENTANA Y CANVAS
+         ===================================================================== */
+      function handleResize() {
+        const w = container.clientWidth;
+        const h = Math.max(1, container.clientHeight);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      }
+      window.addEventListener('resize', handleResize);
+
+      /* =====================================================================
+         BUCLE PRINCIPAL DE FÍSICA Y RENDERIZADO
+         ===================================================================== */
+      let lastTime = performance.now();
+      let fpsFrames = 0;
+      let fpsAccum = 0;
+      const fpsCounterEl = document.getElementById('fps-counter');
+
+      function stepPhysics(dt) {
+        // Sub-pasos para estabilidad física incluso en frames largos
+        const subSteps = 2;
+        const subDt = dt / subSteps;
+
+        for (let s = 0; s < subSteps; s++) {
+          // Gravedad
+          ballPhysics.vel.y -= state.gravity * subDt;
+
+          // Integración de posición
+          ballPhysics.pos.addScaledVector(ballPhysics.vel, subDt);
+
+          // Rebote contra el suelo
+          const minY = FLOOR_Y + BALL_RADIUS;
+          if (ballPhysics.pos.y < minY) {
+            const impactSpeed = Math.abs(ballPhysics.vel.y);
+            ballPhysics.pos.y = minY;
+
+            if (impactSpeed > 0.65) {
+              ballPhysics.vel.y = impactSpeed * state.restitution;
+
+              // Deformación elástica (squash) proporcional a la velocidad de impacto
+              const squashAmt = Math.min(0.36, impactSpeed * 0.024);
+              ballPhysics.squash = squashAmt;
+              ballPhysics.squashVel = -squashAmt * 14.0;
+
+              // Sonido retro sintetizado
+              audioEngine.playBounce(Math.min(1.0, impactSpeed / 14.0), false);
+            } else {
+              // Evitar micro-rebotes infinitos al detenerse
+              ballPhysics.vel.y = 0;
+            }
+
+            // Ligera fricción de rodadura al tocar el suelo
+            ballPhysics.vel.x *= Math.pow(0.88, subDt * 60);
+            ballPhysics.vel.z *= Math.pow(0.88, subDt * 60);
+          }
+
+          // Rebotes en paredes / límites laterales si están activos
+          if (state.showBounds) {
+            const maxXZ = ARENA_HALF_SIZE - BALL_RADIUS;
+
+            if (ballPhysics.pos.x > maxXZ) {
+              const spd = Math.abs(ballPhysics.vel.x);
+              ballPhysics.pos.x = maxXZ;
+              ballPhysics.vel.x = -spd * state.restitution;
+              ballPhysics.squash = -0.16;
+              if (spd > 1.0) audioEngine.playBounce(Math.min(1.0, spd / 10.0), true);
+            } else if (ballPhysics.pos.x < -maxXZ) {
+              const spd = Math.abs(ballPhysics.vel.x);
+              ballPhysics.pos.x = -maxXZ;
+              ballPhysics.vel.x = spd * state.restitution;
+              ballPhysics.squash = -0.16;
+              if (spd > 1.0) audioEngine.playBounce(Math.min(1.0, spd / 10.0), true);
+            }
+
+            if (ballPhysics.pos.z > maxXZ) {
+              const spd = Math.abs(ballPhysics.vel.z);
+              ballPhysics.pos.z = maxXZ;
+              ballPhysics.vel.z = -spd * state.restitution;
+              ballPhysics.squash = -0.16;
+              if (spd > 1.0) audioEngine.playBounce(Math.min(1.0, spd / 10.0), true);
+            } else if (ballPhysics.pos.z < -maxXZ) {
+              const spd = Math.abs(ballPhysics.vel.z);
+              ballPhysics.pos.z = -maxXZ;
+              ballPhysics.vel.z = spd * state.restitution;
+              ballPhysics.squash = -0.16;
+              if (spd > 1.0) audioEngine.playBounce(Math.min(1.0, spd / 10.0), true);
+            }
+          }
+        }
+
+        // Resorte elástico para recuperar forma esférica suavemente
+        const springK = 140.0;
+        const damping = 14.0;
+        const squashAccel = -springK * ballPhysics.squash - damping * ballPhysics.squashVel;
+        ballPhysics.squashVel += squashAccel * dt;
+        ballPhysics.squash += ballPhysics.squashVel * dt;
+        ballPhysics.squash = THREE.MathUtils.clamp(ballPhysics.squash, -0.28, 0.38);
+
+        // Conservación aproximada de volumen: si se aplasta en Y (1 - s), se expande en X y Z
+        const scaleY = 1.0 - ballPhysics.squash;
+        const scaleXZ = 1.0 / Math.sqrt(Math.max(0.45, scaleY));
+
+        // Compensar posición vertical para que la base de la bola no se hunda al aplastarse
+        const baseOffset = BALL_RADIUS * (1.0 - scaleY);
+        ballPivot.position.set(
+          ballPhysics.pos.x,
+          ballPhysics.pos.y + baseOffset,
+          ballPhysics.pos.z
+        );
+        ballPivot.scale.set(scaleXZ, scaleY, scaleXZ);
+
+        // Rotación continua clásica sobre su eje
+        ballMesh.rotation.y += state.spinSpeed * dt;
+
+        // Actualizar sombra proyectada en el suelo según la altura de la bola
+        const heightAboveFloor = Math.max(0, ballPhysics.pos.y - BALL_RADIUS - FLOOR_Y);
+        const heightFactor = Math.max(0.28, 1.0 - heightAboveFloor / 11.0);
+        groundShadow.position.x = ballPhysics.pos.x;
+        groundShadow.position.z = ballPhysics.pos.z;
+        groundShadow.scale.set(heightFactor, heightFactor, 1);
+        groundShadow.material.opacity = 0.25 + heightFactor * 0.6;
+
+        // Actualizar historial y mallas de la estela
+        positionHistory.unshift(ballPhysics.pos.clone());
+        if (positionHistory.length > TRAIL_COUNT) {
+          positionHistory.pop();
+        }
+        if (state.showTrail) {
+          for (let i = 0; i < TRAIL_COUNT; i++) {
+            const histPos = positionHistory[i] || ballPhysics.pos;
+            trailMeshes[i].position.copy(histPos);
+          }
+        }
+      }
+
+      function animate(now) {
+        requestAnimationFrame(animate);
+
+        const rawDt = (now - lastTime) / 1000;
+        lastTime = now;
+        const dt = Math.min(rawDt, 0.05);
+
+        // Contador FPS
+        fpsFrames++;
+        fpsAccum += rawDt;
+        if (fpsAccum >= 0.5) {
+          const fps = Math.round(fpsFrames / fpsAccum);
+          fpsCounterEl.textContent = `${fps} FPS`;
+          fpsFrames = 0;
+          fpsAccum = 0;
+        }
+
+        stepPhysics(dt);
+        updateCameraFromSpherical(dt);
+
+        // Rotación muy sutil del cielo estrellado
+        skyDome.rotation.y += 0.012 * dt;
+
+        renderer.render(scene, camera);
+      }
+
+      // Iniciar bucle de animación al cargar la ventana
+      window.onload = function () {
+        handleResize();
+        lastTime = performance.now();
+        requestAnimationFrame(animate);
+      };
+    });
+  </script>
+</body>
+</html>

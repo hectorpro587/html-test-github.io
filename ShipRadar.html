@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShipRadar</title>
+    <style>
+        /* Variables de tema CRT (Fósforo Verde por defecto y Ámbar) */
+        :root {
+            --phosphor: #00ff41;
+            --phosphor-dim: rgba(0, 255, 65, 0.22);
+            --phosphor-glow: rgba(0, 255, 65, 0.65);
+            --screen-bg: #020d04;
+            --panel-bg: #0f141c;
+            --panel-border: #1e293b;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+        }
+
+        body.theme-amber {
+            --phosphor: #ffb000;
+            --phosphor-dim: rgba(255, 176, 0, 0.22);
+            --phosphor-glow: rgba(255, 176, 0, 0.65);
+            --screen-bg: #140a00;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #080b10;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            gap: 12px;
+            user-select: none;
+        }
+
+        .mono {
+            font-family: "Consolas", "Monaco", "Courier New", monospace;
+        }
+
+        .phosphor-text {
+            color: var(--phosphor);
+            text-shadow: 0 0 6px var(--phosphor-glow);
+        }
+
+        /* Cabecera superior */
+        header {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 10px 16px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .led {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--phosphor);
+            box-shadow: 0 0 8px var(--phosphor);
+        }
+
+        .brand h1 {
+            font-size: 0.95rem;
+            letter-spacing: 0.06em;
+            color: #f8fafc;
+        }
+
+        .brand p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .hud-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid var(--panel-border);
+            padding: 6px 14px;
+            border-radius: 8px;
+        }
+
+        .hud-item span.label {
+            display: block;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        .hud-item span.val {
+            font-size: 0.95rem;
+            font-weight: bold;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Layout principal responsivo */
+        main {
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 290px minmax(320px, 1fr) 300px;
+            gap: 14px;
+            align-items: start;
+            flex: 1;
+        }
+
+        @media (max-width: 1080px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+            .radar-section {
+                order: -1;
+            }
+        }
+
+        /* Paneles laterales */
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .panel-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .btn-grid-5 {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+        }
+
+        .btn-grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+        }
+
+        .btn-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+        }
+
+        .btn-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+
+        button.tac-btn {
+            background-color: #161e2b;
+            border: 1px solid #2a3649;
+            color: var(--text-main);
+            padding: 7px 6px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+        }
+
+        button.tac-btn:hover {
+            border-color: var(--phosphor);
+        }
+
+        button.tac-btn.active {
+            background-color: var(--phosphor-dim);
+            border-color: var(--phosphor);
+            color: var(--phosphor);
+            font-weight: bold;
+            box-shadow: 0 0 8px var(--phosphor-dim);
+        }
+
+        /* Sliders personalizados */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 5px;
+            background: #263244;
+            border-radius: 3px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 12px;
+            border-radius: 3px;
+            background: var(--phosphor);
+            margin-top: -5.5px;
+            box-shadow: 0 0 6px var(--phosphor-glow);
+        }
+
+        /* Contenedor del Radar CRT */
+        .radar-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .crt-box {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            aspect-ratio: 1 / 1;
+            min-height: 320px;
+            background: radial-gradient(circle at center, var(--screen-bg) 55%, #000000 100%);
+            border: 4px solid #1e293b;
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.95), 0 8px 24px rgba(0, 0, 0, 0.7);
+            cursor: crosshair;
+        }
+
+        canvas#radar-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .crt-scanlines {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%);
+            background-size: 100% 4px;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8);
+        }
+
+        .crt-badge-left, .crt-badge-right {
+            position: absolute;
+            bottom: 10px;
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid var(--phosphor-dim);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            pointer-events: none;
+        }
+
+        .crt-badge-left { left: 10px; }
+        .crt-badge-right { right: 10px; }
+
+        /* Telemetría ARPA */
+        .arpa-card {
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .arpa-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .metric-box {
+            background: #131a24;
+            padding: 7px 9px;
+            border-radius: 6px;
+            border: 1px solid #1f2937;
+        }
+
+        .metric-box .m-label {
+            display: block;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        .metric-box .m-val {
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .risk-badge {
+            font-size: 0.65rem;
+            font-weight: bold;
+            padding: 2px 7px;
+            border-radius: 4px;
+        }
+
+        .risk-safe { background: #064e3b; color: #34d399; border: 1px solid #059669; }
+        .risk-warn { background: #78350f; color: #fbbf24; border: 1px solid #d97706; }
+        .risk-danger { background: #7f1d1d; color: #f87171; border: 1px solid #dc2626; animation: blink 1s infinite; }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+
+        .target-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            max-height: 210px;
+            overflow-y: auto;
+        }
+
+        .target-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid #1e293b;
+            padding: 6px 9px;
+            border-radius: 6px;
+            color: var(--text-main);
+            cursor: pointer;
+            font-size: 0.75rem;
+            text-align: left;
+        }
+
+        .target-row:hover {
+            border-color: #475569;
+        }
+
+        .target-row.selected {
+            border-color: var(--phosphor);
+            background: var(--phosphor-dim);
+            color: var(--phosphor);
+        }
+
+        .hidden { display: none !important; }
+
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            padding-top: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Barra Superior -->
+    <header>
+        <div class="brand">
+            <div class="led"></div>
+            <div>
+                <h1 class="mono">RADAR MARINO BANDA-X // ARPA CRT</h1>
+                <p class="mono" id="own-gps">POS: 33°02.40'S 071°37.80'W | GPS FIX 3D</p>
+            </div>
+        </div>
+
+        <div class="hud-bar mono">
+            <div class="hud-item">
+                <span class="label">PROA (HDG)</span>
+                <span class="val phosphor-text" id="hud-hdg">045.0°</span>
+            </div>
+            <div class="hud-item">
+                <span class="label">VEL (SOG)</span>
+                <span class="val phosphor-text" id="hud-spd">14.0 KN</span>
+            </div>
+            <div class="hud-item">
+                <span class="label">RANGO / ANILLOS</span>
+                <span class="val phosphor-text" id="hud-rng">6.0 / 1.5 NM</span>
+            </div>
+            <div class="hud-item">
+                <span class="label">TIEMPO SIM</span>
+                <span class="val phosphor-text" id="hud-time">25x</span>
+            </div>
+            <div class="hud-item">
+                <span class="label">ORIENTACIÓN</span>
+                <span class="val phosphor-text" id="hud-mode">NORTH-UP</span>
+            </div>
+        </div>
+
+        <div class="header-actions mono">
+            <button id="btn-phosphor" class="tac-btn">FÓSFORO: VERDE</button>
+            <button id="btn-audio" class="tac-btn">AUDIO PING: OFF</button>
+        </div>
+    </header>
+
+    <!-- Cuerpo Principal -->
+    <main>
+        <!-- Panel Izquierdo: Controles -->
+        <section class="panel">
+            <div class="panel-title">Controles del Transceptor</div>
+
+            <div class="control-group mono">
+                <div class="control-header">
+                    <span>ESCALA DE TIEMPO</span>
+                    <span class="phosphor-text" id="lbl-time">25x (RÁPIDO)</span>
+                </div>
+                <div class="btn-grid-4">
+                    <button class="tac-btn time-btn" data-scale="1">1x</button>
+                    <button class="tac-btn time-btn" data-scale="10">10x</button>
+                    <button class="tac-btn time-btn active" data-scale="25">25x</button>
+                    <button class="tac-btn time-btn" data-scale="50">50x</button>
+                </div>
+            </div>
+
+            <div class="control-group mono">
+                <div class="control-header">
+                    <span>ALCANCE (RANGE NM)</span>
+                    <span class="phosphor-text" id="lbl-range">6 NM</span>
+                </div>
+                <div class="btn-grid-5">
+                    <button class="tac-btn range-btn" data-range="1">1</button>
+                    <button class="tac-btn range-btn" data-range="3">3</button>
+                    <button class="tac-btn range-btn active" data-range="6">6</button>
+                    <button class="tac-btn range-btn" data-range="12">12</button>
+                    <button class="tac-btn range-btn" data-range="24">24</button>
+                </div>
+            </div>
+
+            <div class="control-group mono">
+                <div class="control-header">
+                    <span>ORIENTACIÓN PANTALLA</span>
+                </div>
+                <div class="btn-grid-2">
+                    <button id="btn-north" class="tac-btn active">NORTH-UP (N↑)</button>
+                    <button id="btn-head" class="tac-btn">HEAD-UP (H↑)</button>
+                </div>
+            </div>
+
+            <div class="control-group mono">
+                <div class="control-header">
+                    <label for="sl-gain">GANANCIA (GAIN)</label>
+                    <span class="phosphor-text" id="lbl-gain">80%</span>
+                </div>
+                <input type="range" id="sl-gain" min="15" max="100" value="80">
+            </div>
+
+            <div class="control-group mono">
+                <div class="control-header">
+                    <label for="sl-sea">FILTRO OLEAJE (SEA)</label>
+                    <span class="phosphor-text" id="lbl-sea">35%</span>
+                </div>
+                <input type="range" id="sl-sea" min="0" max="100" value="35">
+            </div>
+
+            <div class="control-group mono">
+                <div class="control-header">
+                    <label for="sl-rpm">ANTENA (RPM)</label>
+                    <span class="phosphor-text" id="lbl-rpm">30 RPM</span>
+                </div>
+                <input type="range" id="sl-rpm" min="8" max="48" value="30">
+            </div>
+
+            <div class="control-group mono" style="border-top: 1px solid var(--panel-border); padding-top: 10px;">
+                <div class="control-header">
+                    <label for="sl-own-spd">MÁQUINAS BUQUE PROPIO</label>
+                    <span class="phosphor-text" id="lbl-own-spd">14.0 KN</span>
+                </div>
+                <input type="range" id="sl-own-spd" min="0" max="30" step="0.5" value="14">
+
+                <div class="control-header" style="margin-top: 6px;">
+                    <span>TIMÓN (CAÑA)</span>
+                </div>
+                <div class="btn-grid-3">
+                    <button id="btn-port" class="tac-btn">◄ BABOR</button>
+                    <button id="btn-steady" class="tac-btn active">FIRME</button>
+                    <button id="btn-stbd" class="tac-btn">ESTRIBOR ►</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Centro: Pantalla Radar CRT -->
+        <section class="radar-section">
+            <div class="crt-box" id="crt-container">
+                <canvas id="radar-canvas"></canvas>
+                <div class="crt-scanlines"></div>
+                <div class="crt-badge-left mono">
+                    <span style="color: var(--text-muted);">CURSOR:</span>
+                    <span class="phosphor-text" id="cursor-info">---° / --.-- NM</span>
+                </div>
+                <div class="crt-badge-right mono">
+                    <span style="color: var(--text-muted);">VECTOR:</span>
+                    <span class="phosphor-text">6 MIN REL</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Panel Derecho: Telemetría ARPA -->
+        <section class="panel">
+            <div class="panel-title">
+                <span>Telemetría ARPA</span>
+                <span class="mono phosphor-text" id="tgt-count">0 BLANCOS</span>
+            </div>
+
+            <div class="arpa-card mono">
+                <div id="arpa-empty" style="text-align: center; padding: 20px 6px; font-size: 0.75rem; color: var(--text-muted);">
+                    Haga clic sobre cualquier barco en el radar o en la lista inferior para iniciar seguimiento ARPA.
+                </div>
+
+                <div id="arpa-data" class="hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border); padding-bottom: 6px;">
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted);">CONTACTO ADQUIRIDO</div>
+                            <div class="phosphor-text" style="font-weight: bold; font-size: 0.85rem;" id="d-name">TGT-01</div>
+                        </div>
+                        <span id="d-risk" class="risk-badge risk-safe">SEGURO</span>
+                    </div>
+
+                    <div class="arpa-grid">
+                        <div class="metric-box">
+                            <span class="m-label">DISTANCIA (RNG)</span>
+                            <span class="m-val phosphor-text" id="d-rng">0.00 NM</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="m-label">MARCACIÓN (BRG)</span>
+                            <span class="m-val phosphor-text" id="d-brg">000.0°</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="m-label">RUMBO (COG)</span>
+                            <span class="m-val phosphor-text" id="d-cog">000.0°</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="m-label">VELOCIDAD (SOG)</span>
+                            <span class="m-val phosphor-text" id="d-sog">0.0 KN</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="m-label">CPA (DIST. MÍN)</span>
+                            <span class="m-val phosphor-text" id="d-cpa">0.00 NM</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="m-label">TCPA (TIEMPO)</span>
+                            <span class="m-val phosphor-text" id="d-tcpa">--:--</span>
+                        </div>
+                    </div>
+
+                    <button id="btn-clear-tgt" class="tac-btn" style="width: 100%; margin-top: 8px; color: var(--text-muted);">
+                        LIBERAR OBJETIVO
+                    </button>
+                </div>
+            </div>
+
+            <div class="control-group mono">
+                <div class="control-header">
+                    <span>CONTACTOS EN RANGO</span>
+                </div>
+                <div class="target-list" id="target-list"></div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mono">
+        SIMULADOR DE RADAR MARINO AUTOCONTENIDO • HAGA CLIC EN CUALQUIER ECO PARA ADQUIRIR BLANCO ARPA
+    </footer>
+
+    <script>
+        (function () {
+            // --- ESTADO DE LA SIMULACIÓN ---
+            const state = {
+                phosphor: 'green',
+                themes: {
+                    green: { main: '#00ff41', trail: 'rgba(0, 255, 65, ', fade: 'rgba(2, 13, 4, 0.035)', land: 'rgba(0, 255, 65, 0.45)' },
+                    amber: { main: '#ffb000', trail: 'rgba(255, 176, 0, ', fade: 'rgba(20, 10, 0, 0.035)', land: 'rgba(255, 176, 0, 0.45)' }
+                },
+                rangeNM: 6,
+                timeScale: 25,
+                gain: 80,
+                seaClutter: 35,
+                rpm: 30,
+                orientation: 'north-up',
+                sweepAngle: 0,
+                prevSweepAngle: 0,
+                audioOn: false,
+                selectedId: 'TGT-01',
+                ownShip: {
+                    lat: -33.0400,
+                    lon: -71.6300,
+                    heading: 45.0,
+                    speed: 14.0,
+                    turnRate: 0
+                }
+            };
+
+            // Catálogo para regenerar barcos continuamente en el horizonte
+            const shipTemplates = [
+                { name: 'MV PACIFIC STAR', type: 'CARGUERO', minSpd: 12, maxSpd: 18, size: 4.5 },
+                { name: 'F/V ALBATROS', type: 'PESQUERO', minSpd: 6, maxSpd: 11, size: 3.2 },
+                { name: 'TANKER NORDIC', type: 'PETROLERO', minSpd: 11, maxSpd: 15, size: 5.0 },
+                { name: 'LANCHA RELÁMPAGO', type: 'LANCHA RÁPIDA', minSpd: 24, maxSpd: 34, size: 2.8 },
+                { name: 'REMOLCADOR TITAN', type: 'REMOLCADOR', minSpd: 9, maxSpd: 14, size: 3.4 },
+                { name: 'PATRULLERA P-82', type: 'PATRULLERA', minSpd: 18, maxSpd: 26, size: 3.8 },
+                { name: 'MSC ACONCAGUA', type: 'PORTACONT.', minSpd: 16, maxSpd: 22, size: 5.2 }
+            ];
+
+            let nextIdCounter = 10;
+
+            // Flota inicial en millas náuticas relativas (x: Este, y: Norte)
+            const targets = [
+                { id: 'TGT-01', name: 'MV PACIFIC STAR', type: 'CARGUERO', x: 1.8, y: 2.9, heading: 220, speed: 16.5, size: 4.5, brightness: 1.0, trail: [] },
+                { id: 'TGT-02', name: 'F/V ALBATROS', type: 'PESQUERO', x: -1.5, y: 1.6, heading: 105, speed: 9.2, size: 3.2, brightness: 1.0, trail: [] },
+                { id: 'TGT-03', name: 'TANKER NORDIC', type: 'PETROLERO', x: 3.8, y: -1.8, heading: 315, speed: 14.0, size: 5.0, brightness: 1.0, trail: [] },
+                { id: 'TGT-04', name: 'LANCHA RELÁMPAGO', type: 'LANCHA RÁPIDA', x: -1.1, y: -2.2, heading: 35, speed: 28.0, size: 2.8, brightness: 1.0, trail: [] },
+                { id: 'TGT-05', name: 'REMOLCADOR TITAN', type: 'REMOLCADOR', x: 1.2, y: -1.3, heading: 340, speed: 12.0, size: 3.4, brightness: 1.0, trail: [] },
+                { id: 'TGT-06', name: 'PATRULLERA P-82', type: 'PATRULLERA', x: -3.2, y: -2.8, heading: 55, speed: 21.0, size: 3.8, brightness: 1.0, trail: [] },
+                { id: 'TGT-07', name: 'BOYA CANAL N°4', type: 'BOYA', x: -0.7, y: 0.9, heading: 0, speed: 0.0, size: 2.4, brightness: 1.0, trail: [] },
+                { id: 'TGT-08', name: 'BOYA RECALADA', type: 'BOYA', x: 2.4, y: 0.6, heading: 0, speed: 0.0, size: 2.4, brightness: 1.0, trail: [] }
+            ];
+
+            // Masas de tierra / costa en coordenadas NM
+            const landMasses = [
+                [
+                    { x: 4.8, y: 8.5 }, { x: 5.6, y: 4.8 }, { x: 4.6, y: 2.2 },
+                    { x: 6.2, y: -0.4 }, { x: 6.8, y: -3.8 }, { x: 5.2, y: -7.0 },
+                    { x: 11.5, y: -8.0 }, { x: 13.0, y: 9.5 }
+                ],
+                [
+                    { x: -4.4, y: 3.8 }, { x: -3.5, y: 4.3 }, { x: -3.1, y: 3.4 },
+                    { x: -3.8, y: 2.9 }, { x: -4.6, y: 3.2 }
+                ]
+            ];
+
+            // Ruido de oleaje cercano al centro
+            const seaParticles = Array.from({ length: 240 }, () => ({
+                angle: Math.random() * 360,
+                distRatio: Math.pow(Math.random(), 1.7),
+                size: Math.random() * 1.7 + 0.6,
+                brightness: 0.5
+            }));
+
+            // --- CANVAS Y DIMENSIONES SEGURAS ---
+            const container = document.getElementById('crt-container');
+            const canvas = document.getElementById('radar-canvas');
+            const ctx = canvas.getContext('2d');
+
+            const phosphorCanvas = document.createElement('canvas');
+            const pCtx = phosphorCanvas.getContext('2d');
+
+            let width = 500;
+            let height = 500;
+            let cx = 250;
+            let cy = 250;
+            let radius = 215;
+
+            function resizeCanvas() {
+                const rect = container.getBoundingClientRect();
+                const safeSize = Math.max(rect.width, container.clientWidth, 320);
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+                width = safeSize;
+                height = safeSize;
+
+                canvas.width = Math.round(width * dpr);
+                canvas.height = Math.round(height * dpr);
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+                phosphorCanvas.width = Math.round(width * dpr);
+                phosphorCanvas.height = Math.round(height * dpr);
+                pCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+                cx = width / 2;
+                cy = height / 2;
+                radius = Math.max(100, (Math.min(width, height) / 2) - 34);
+            }
+
+            // --- AUDIO WEB AUDIO API ---
+            let audioCtx = null;
+            function playPing(isTarget) {
+                if (!state.audioOn) return;
+                try {
+                    if (!audioCtx) {
+                        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                        if (AudioContextClass) audioCtx = new AudioContextClass();
+                    }
+                    if (!audioCtx) return;
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                    const now = audioCtx.currentTime;
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = isTarget ? 'sine' : 'triangle';
+                    osc.frequency.setValueAtTime(isTarget ? 1420 : 500, now);
+                    osc.frequency.exponentialRampToValueAtTime(isTarget ? 920 : 210, now + 0.09);
+
+                    gain.gain.setValueAtTime(isTarget ? 0.07 : 0.04, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } catch (err) {
+                    // Ignorar si el navegador bloquea el audio
+                }
+            }
+
+            // --- MATEMÁTICA NÁUTICA ---
+            const toRad = (deg) => (deg * Math.PI) / 180;
+            const toDeg = (rad) => ((rad * 180) / Math.PI + 360) % 360;
+
+            function nmToPx(xNM, yNM) {
+                let rx = xNM;
+                let ry = yNM;
+                if (state.orientation === 'head-up') {
+                    const rot = toRad(state.ownShip.heading);
+                    rx = xNM * Math.cos(rot) - yNM * Math.sin(rot);
+                    ry = xNM * Math.sin(rot) + yNM * Math.cos(rot);
+                }
+                const scale = radius / state.rangeNM;
+                return { x: cx + rx * scale, y: cy - ry * scale };
+            }
+
+            function pxToNm(px, py) {
+                const scale = radius / state.rangeNM;
+                let rx = (px - cx) / scale;
+                let ry = (cy - py) / scale;
+                if (state.orientation === 'head-up') {
+                    const rot = toRad(-state.ownShip.heading);
+                    return {
+                        x: rx * Math.cos(rot) - ry * Math.sin(rot),
+                        y: rx * Math.sin(rot) + ry * Math.cos(rot)
+                    };
+                }
+                return { x: rx, y: ry };
+            }
+
+            function getRngBrg(xNM, yNM) {
+                return {
+                    rng: Math.hypot(xNM, yNM),
+                    brg: toDeg(Math.atan2(xNM, yNM))
+                };
+            }
+
+            function computeARPA(t) {
+                const ownRad = toRad(state.ownShip.heading);
+                const vOwnX = Math.sin(ownRad) * state.ownShip.speed;
+                const vOwnY = Math.cos(ownRad) * state.ownShip.speed;
+
+                const tgtRad = toRad(t.heading);
+                const vTgtX = Math.sin(tgtRad) * t.speed;
+                const vTgtY = Math.cos(tgtRad) * t.speed;
+
+                const vRelX = vTgtX - vOwnX;
+                const vRelY = vTgtY - vOwnY;
+                const vRelSq = vRelX * vRelX + vRelY * vRelY;
+
+                const { rng, brg } = getRngBrg(t.x, t.y);
+                if (vRelSq < 0.0001) {
+                    return { rng, brg, cpa: rng, tcpaMin: Infinity };
+                }
+
+                const dot = t.x * vRelX + t.y * vRelY;
+                const tHours = -dot / vRelSq;
+                if (tHours <= 0) {
+                    return { rng, brg, cpa: rng, tcpaMin: -1 };
+                }
+
+                const fx = t.x + vRelX * tHours;
+                const fy = t.y + vRelY * tHours;
+                return {
+                    rng,
+                    brg,
+                    cpa: Math.hypot(fx, fy),
+                    tcpaMin: tHours * 60
+                };
+            }
+
+            function isSwept(prevA, currA, targetA) {
+                if (prevA <= currA) {
+                    return targetA >= prevA && targetA <= currA;
+                }
+                return targetA >= prevA || targetA <= currA;
+            }
+
+            function respawnTarget(t) {
+                const tpl = shipTemplates[Math.floor(Math.random() * shipTemplates.length)];
+                const spawnDist = Math.max(state.rangeNM * 0.92, 6.5);
+                const entryAngle = Math.random() * 360;
+                const rad = toRad(entryAngle);
+
+                t.id = 'TGT-' + String(nextIdCounter++).padStart(2, '0');
+                t.name = tpl.name;
+                t.type = tpl.type;
+                t.size = tpl.size;
+                t.x = Math.sin(rad) * spawnDist;
+                t.y = Math.cos(rad) * spawnDist;
+                t.heading = (entryAngle + 180 + (Math.random() * 60 - 30) + 360) % 360;
+                t.speed = tpl.minSpd + Math.random() * (tpl.maxSpd - tpl.minSpd);
+                t.brightness = 0.8;
+                t.trail = [];
+            }
+
+            // --- FÍSICA Y MOVIMIENTO ---
+            function updatePhysics(dt) {
+                const simDt = dt * state.timeScale;
+                const dtHours = simDt / 3600;
+
+                // Timón del buque propio
+                if (state.ownShip.turnRate !== 0) {
+                    state.ownShip.heading = (state.ownShip.heading + state.ownShip.turnRate * simDt * 0.3 + 360) % 360;
+                    document.getElementById('hud-hdg').textContent = state.ownShip.heading.toFixed(1).padStart(5, '0') + '°';
+                }
+
+                // Desplazamiento del buque propio
+                const ownRad = toRad(state.ownShip.heading);
+                const dxOwn = Math.sin(ownRad) * state.ownShip.speed * dtHours;
+                const dyOwn = Math.cos(ownRad) * state.ownShip.speed * dtHours;
+
+                state.ownShip.lat += dyOwn / 60;
+                state.ownShip.lon += dxOwn / (60 * Math.cos(toRad(state.ownShip.lat)));
+
+                // Barrido de antena
+                state.prevSweepAngle = state.sweepAngle;
+                const degPerSec = (state.rpm / 60) * 360;
+                state.sweepAngle = (state.sweepAngle + degPerSec * dt) % 360;
+
+                const hdgMark = state.orientation === 'north-up' ? state.ownShip.heading : 0;
+                if (isSwept(state.prevSweepAngle, state.sweepAngle, hdgMark)) {
+                    playPing(false);
+                }
+
+                // Actualizar barcos y boyas
+                for (let i = 0; i < targets.length; i++) {
+                    const t = targets[i];
+
+                    if (t.type === 'PESQUERO') {
+                        t.heading = (t.heading + Math.sin(performance.now() * 0.0004) * 0.35 * simDt + 360) % 360;
+                    }
+
+                    const tRad = toRad(t.heading);
+                    const dxTgt = Math.sin(tRad) * t.speed * dtHours;
+                    const dyTgt = Math.cos(tRad) * t.speed * dtHours;
+
+                    t.x += (dxTgt - dxOwn);
+                    t.y += (dyTgt - dyOwn);
+
+                    const dist = Math.hypot(t.x, t.y);
+                    const maxDist = Math.max(state.rangeNM * 1.4, 12);
+                    if (dist > maxDist && t.type !== 'BOYA') {
+                        if (state.selectedId === t.id) state.selectedId = null;
+                        respawnTarget(t);
+                    }
+
+                    const { brg } = getRngBrg(t.x, t.y);
+                    const screenBrg = state.orientation === 'north-up'
+                        ? brg
+                        : (brg - state.ownShip.heading + 360) % 360;
+
+                    if (isSwept(state.prevSweepAngle, state.sweepAngle, screenBrg)) {
+                        t.brightness = 1.0;
+                        t.trail.push({ x: t.x, y: t.y });
+                        if (t.trail.length > 7) t.trail.shift();
+
+                        if (t.id === state.selectedId && dist <= state.rangeNM) {
+                            playPing(true);
+                        }
+                    } else {
+                        t.brightness = Math.max(0.35, t.brightness - dt * 0.25);
+                    }
+                }
+
+                // Desplazar masas de tierra
+                for (let i = 0; i < landMasses.length; i++) {
+                    const poly = landMasses[i];
+                    let sumX = 0, sumY = 0;
+                    for (let j = 0; j < poly.length; j++) {
+                        poly[j].x -= dxOwn;
+                        poly[j].y -= dyOwn;
+                        sumX += poly[j].x;
+                        sumY += poly[j].y;
+                    }
+                    const avgX = sumX / poly.length;
+                    const avgY = sumY / poly.length;
+                    if (Math.hypot(avgX, avgY) > 26) {
+                        for (let j = 0; j < poly.length; j++) {
+                            poly[j].x -= avgX * 1.7;
+                            poly[j].y -= avgY * 1.7;
+                        }
+                    }
+                }
+
+                // Ruido de oleaje
+                for (let i = 0; i < seaParticles.length; i++) {
+                    const p = seaParticles[i];
+                    if (isSwept(state.prevSweepAngle, state.sweepAngle, p.angle)) {
+                        p.brightness = 1.0;
+                    } else {
+                        p.brightness = Math.max(0.05, p.brightness - dt * 0.7);
+                    }
+                }
+            }
+
+            // --- RENDERIZADO CRT ---
+            function render() {
+                const theme = state.themes[state.phosphor];
+                const gainNorm = state.gain / 100;
+                const seaNorm = state.seaClutter / 100;
+
+                // Desvanecer capa de persistencia
+                pCtx.fillStyle = theme.fade;
+                pCtx.fillRect(0, 0, width, height);
+
+                pCtx.save();
+                pCtx.beginPath();
+                pCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+                pCtx.clip();
+
+                // Estela angular del haz de radar
+                const sweepRad = toRad(state.sweepAngle - 90);
+                const arcLen = toRad(34);
+                const steps = 10;
+                for (let i = 0; i < steps; i++) {
+                    const a1 = sweepRad - (arcLen * (i + 1)) / steps;
+                    const a2 = sweepRad - (arcLen * i) / steps;
+                    const alpha = (1 - i / steps) * 0.15 * gainNorm;
+                    pCtx.beginPath();
+                    pCtx.moveTo(cx, cy);
+                    pCtx.arc(cx, cy, radius, a1, a2);
+                    pCtx.closePath();
+                    pCtx.fillStyle = theme.trail + alpha.toFixed(3) + ')';
+                    pCtx.fill();
+                }
+
+                // Dibujar costas e islas
+                for (let i = 0; i < landMasses.length; i++) {
+                    const poly = landMasses[i];
+                    pCtx.beginPath();
+                    for (let j = 0; j < poly.length; j++) {
+                        const pt = nmToPx(poly[j].x, poly[j].y);
+                        if (j === 0) pCtx.moveTo(pt.x, pt.y);
+                        else pCtx.lineTo(pt.x, pt.y);
+                    }
+                    pCtx.closePath();
+                    pCtx.fillStyle = theme.land;
+                    pCtx.globalAlpha = 0.08 * gainNorm;
+                    pCtx.fill();
+                    pCtx.strokeStyle = theme.main;
+                    pCtx.lineWidth = 1.4;
+                    pCtx.globalAlpha = 0.16 * gainNorm;
+                    pCtx.stroke();
+                    pCtx.globalAlpha = 1.0;
+                }
+
+                // Dibujar oleaje (Sea Clutter)
+                const maxClutterR = radius * (0.42 * (1 - seaNorm * 0.85));
+                if (maxClutterR > 6 && gainNorm > 0.2) {
+                    pCtx.fillStyle = theme.main;
+                    for (let i = 0; i < seaParticles.length; i++) {
+                        const p = seaParticles[i];
+                        if (p.brightness > 0.12) {
+                            const r = p.distRatio * maxClutterR;
+                            const rad = toRad(p.angle - 90);
+                            const px = cx + Math.cos(rad) * r;
+                            const py = cy + Math.sin(rad) * r;
+                            pCtx.globalAlpha = p.brightness * gainNorm * 0.5;
+                            pCtx.fillRect(px, py, p.size, p.size);
+                        }
+                    }
+                    pCtx.globalAlpha = 1.0;
+                }
+
+                // Dibujar ecos de los barcos y sus estelas históricas
+                for (let i = 0; i < targets.length; i++) {
+                    const t = targets[i];
+                    const dist = Math.hypot(t.x, t.y);
+                    if (dist > state.rangeNM) continue;
+
+                    const threshold = (100 - state.gain) * 0.024;
+                    if (t.size < threshold) continue;
+
+                    // Estela histórica
+                    if (t.trail.length > 1) {
+                        for (let j = 0; j < t.trail.length; j++) {
+                            const tp = nmToPx(t.trail[j].x, t.trail[j].y);
+                            const ratio = (j + 1) / t.trail.length;
+                            pCtx.beginPath();
+                            pCtx.arc(tp.x, tp.y, Math.max(1.3, t.size * 0.35 * ratio), 0, Math.PI * 2);
+                            pCtx.fillStyle = theme.main;
+                            pCtx.globalAlpha = ratio * 0.45 * gainNorm;
+                            pCtx.fill();
+                        }
+                        pCtx.globalAlpha = 1.0;
+                    }
+
+                    // Eco principal
+                    const pos = nmToPx(t.x, t.y);
+                    const { brg } = getRngBrg(t.x, t.y);
+                    const rot = state.orientation === 'north-up' ? toRad(brg) : toRad(brg - state.ownShip.heading);
+                    const intensity = Math.min(1, t.brightness * (0.55 + gainNorm * 0.65));
+
+                    pCtx.save();
+                    pCtx.translate(pos.x, pos.y);
+                    pCtx.rotate(rot);
+                    pCtx.beginPath();
+                    pCtx.ellipse(0, 0, t.size * (0.85 + gainNorm * 0.4), t.size * 0.6, 0, 0, Math.PI * 2);
+                    pCtx.fillStyle = theme.main;
+                    pCtx.shadowColor = theme.main;
+                    pCtx.shadowBlur = 8 * intensity;
+                    pCtx.globalAlpha = intensity;
+                    pCtx.fill();
+                    pCtx.restore();
+                }
+
+                pCtx.restore();
+
+                // Copiar capa de fósforo al canvas visible
+                ctx.clearRect(0, 0, width, height);
+                ctx.drawImage(phosphorCanvas, 0, 0);
+
+                // Dibujar retícula, anillos, rosa de los vientos y simbología ARPA
+                drawOverlay(theme);
+            }
+
+            function drawOverlay(theme) {
+                ctx.save();
+                ctx.strokeStyle = theme.main;
+                ctx.fillStyle = theme.main;
+                ctx.font = '11px "Consolas", "Courier New", monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // 4 Anillos de distancia
+                for (let i = 1; i <= 4; i++) {
+                    const r = (radius / 4) * i;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                    ctx.lineWidth = i === 4 ? 1.5 : 0.7;
+                    ctx.globalAlpha = i === 4 ? 0.85 : 0.35;
+                    ctx.stroke();
+
+                    if (i < 4) {
+                        const val = ((state.rangeNM / 4) * i).toFixed(state.rangeNM < 3 ? 2 : 1);
+                        ctx.globalAlpha = 0.7;
+                        ctx.fillText(val, cx + 16, cy - r + 8);
+                    }
+                }
+
+                // Rosa de los vientos exterior
+                const rotOffset = state.orientation === 'head-up' ? -state.ownShip.heading : 0;
+                for (let deg = 0; deg < 360; deg += 5) {
+                    const dispDeg = (deg + rotOffset + 360) % 360;
+                    const rad = toRad(dispDeg - 90);
+                    const isMajor = deg % 30 === 0;
+                    const isMed = deg % 10 === 0;
+                    const innerR = radius - (isMajor ? 10 : isMed ? 6 : 3);
+
+                    ctx.beginPath();
+                    ctx.moveTo(cx + Math.cos(rad) * innerR, cy + Math.sin(rad) * innerR);
+                    ctx.lineTo(cx + Math.cos(rad) * radius, cy + Math.sin(rad) * radius);
+                    ctx.lineWidth = isMajor ? 1.3 : 0.6;
+                    ctx.globalAlpha = isMajor ? 0.9 : 0.45;
+                    ctx.stroke();
+
+                    if (isMajor) {
+                        const tx = cx + Math.cos(rad) * (radius + 16);
+                        const ty = cy + Math.sin(rad) * (radius + 16);
+                        ctx.globalAlpha = 0.9;
+                        ctx.fillText(String(deg).padStart(3, '0') + '°', tx, ty);
+                    }
+                }
+
+                // Marcador Norte (N)
+                const nAngle = state.orientation === 'north-up' ? 0 : (360 - state.ownShip.heading) % 360;
+                const nRad = toRad(nAngle - 90);
+                ctx.font = 'bold 13px "Consolas", "Courier New", monospace';
+                ctx.globalAlpha = 1;
+                ctx.fillText('N', cx + Math.cos(nRad) * (radius + 27), cy + Math.sin(nRad) * (radius + 27));
+
+                // Línea de Proa (Heading Line)
+                const hlAngle = state.orientation === 'north-up' ? state.ownShip.heading : 0;
+                const hlRad = toRad(hlAngle - 90);
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + Math.cos(hlRad) * radius, cy + Math.sin(hlRad) * radius);
+                ctx.lineWidth = 1.2;
+                ctx.globalAlpha = 0.75;
+                ctx.stroke();
+
+                // Centro buque propio
+                ctx.beginPath();
+                ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+                ctx.lineWidth = 1.5;
+                ctx.globalAlpha = 1;
+                ctx.stroke();
+
+                // Haz de barrido activo
+                const sweepRad = toRad(state.sweepAngle - 90);
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + Math.cos(sweepRad) * radius, cy + Math.sin(sweepRad) * radius);
+                ctx.lineWidth = 1.8;
+                ctx.shadowColor = theme.main;
+                ctx.shadowBlur = 10;
+                ctx.globalAlpha = 0.95;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // Vectores ARPA y corchetes de blanco seleccionado
+                for (let i = 0; i < targets.length; i++) {
+                    const t = targets[i];
+                    const dist = Math.hypot(t.x, t.y);
+                    if (dist > state.rangeNM) continue;
+
+                    const pos = nmToPx(t.x, t.y);
+                    const isSel = t.id === state.selectedId;
+
+                    if (t.speed > 0.4) {
+                        const ownRad = toRad(state.ownShip.heading);
+                        const vOwnX = Math.sin(ownRad) * state.ownShip.speed;
+                        const vOwnY = Math.cos(ownRad) * state.ownShip.speed;
+
+                        const tgtRad = toRad(t.heading);
+                        const vTgtX = Math.sin(tgtRad) * t.speed;
+                        const vTgtY = Math.cos(tgtRad) * t.speed;
+
+                        // Proyección relativa a 6 minutos (0.1 h)
+                        const fx = t.x + (vTgtX - vOwnX) * 0.1;
+                        const fy = t.y + (vTgtY - vOwnY) * 0.1;
+                        const endPos = nmToPx(fx, fy);
+
+                        ctx.beginPath();
+                        ctx.moveTo(pos.x, pos.y);
+                        ctx.lineTo(endPos.x, endPos.y);
+                        ctx.lineWidth = isSel ? 1.6 : 1.0;
+                        ctx.setLineDash([3, 3]);
+                        ctx.globalAlpha = isSel ? 0.95 : 0.6;
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+
+                    if (isSel) {
+                        const b = 11;
+                        ctx.lineWidth = 1.6;
+                        ctx.globalAlpha = 1;
+                        ctx.strokeRect(pos.x - b, pos.y - b, b * 2, b * 2);
+                        ctx.font = '10px "Consolas", "Courier New", monospace';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(t.id, pos.x + 14, pos.y - 4);
+                        ctx.textAlign = 'center';
+                    }
+                }
+
+                ctx.restore();
+            }
+
+            // --- ACTUALIZACIÓN DE PANELES HTML ---
+            function updateTelemetryUI() {
+                // Actualizar GPS
+                const fmt = (val, posH, negH, pad) => {
+                    const abs = Math.abs(val);
+                    const deg = Math.floor(abs);
+                    const min = ((abs - deg) * 60).toFixed(2).padStart(5, '0');
+                    return `${String(deg).padStart(pad, '0')}°${min}'${val >= 0 ? posH : negH}`;
+                };
+                document.getElementById('own-gps').textContent =
+                    `POS: ${fmt(state.ownShip.lat, 'N', 'S', 2)} ${fmt(state.ownShip.lon, 'E', 'W', 3)} | GPS FIX 3D`;
+
+                // Lista de contactos en rango
+                const inRange = targets
+                    .map(t => ({ t, arpa: computeARPA(t) }))
+                    .filter(item => item.arpa.rng <= state.rangeNM)
+                    .sort((a, b) => a.arpa.rng - b.arpa.rng);
+
+                document.getElementById('tgt-count').textContent = `${inRange.length} BLANCOS`;
+
+                const listEl = document.getElementById('target-list');
+                listEl.innerHTML = '';
+
+                if (inRange.length === 0) {
+                    listEl.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:0.72rem; padding:8px;">Sin contactos en rango</div>';
+                } else {
+                    for (let i = 0; i < inRange.length; i++) {
+                        const { t, arpa } = inRange[i];
+                        const isSel = t.id === state.selectedId;
+                        const danger = arpa.cpa < 0.8 && arpa.tcpaMin > 0 && arpa.tcpaMin < 20;
+
+                        const row = document.createElement('button');
+                        row.className = 'target-row mono' + (isSel ? ' selected' : '');
+                        row.innerHTML = `
+                            <span><strong>${t.id}</strong> <small style="color:var(--text-muted)">${t.type}</small></span>
+                            <span>${arpa.rng.toFixed(2)} NM ${danger ? '<strong style="color:#f87171;">⚠</strong>' : ''}</span>
+                        `;
+                        row.onclick = () => {
+                            state.selectedId = t.id;
+                            updateTelemetryUI();
+                        };
+                        listEl.appendChild(row);
+                    }
+                }
+
+                // Tarjeta ARPA detallada
+                const emptyBox = document.getElementById('arpa-empty');
+                const dataBox = document.getElementById('arpa-data');
+
+                if (!state.selectedId) {
+                    emptyBox.classList.remove('hidden');
+                    dataBox.classList.add('hidden');
+                    return;
+                }
+
+                const selTarget = targets.find(t => t.id === state.selectedId);
+                if (!selTarget) {
+                    state.selectedId = null;
+                    emptyBox.classList.remove('hidden');
+                    dataBox.classList.add('hidden');
+                    return;
+                }
+
+                emptyBox.classList.add('hidden');
+                dataBox.classList.remove('hidden');
+
+                const arpa = computeARPA(selTarget);
+                document.getElementById('d-name').textContent = `${selTarget.id} // ${selTarget.name}`;
+                document.getElementById('d-rng').textContent = `${arpa.rng.toFixed(2)} NM`;
+                document.getElementById('d-brg').textContent = `${arpa.brg.toFixed(1).padStart(5, '0')}°`;
+                document.getElementById('d-cog').textContent = `${selTarget.heading.toFixed(1).padStart(5, '0')}°`;
+                document.getElementById('d-sog').textContent = `${selTarget.speed.toFixed(1)} KN`;
+                document.getElementById('d-cpa').textContent = `${arpa.cpa.toFixed(2)} NM`;
+
+                const riskEl = document.getElementById('d-risk');
+                if (arpa.tcpaMin === Infinity || arpa.tcpaMin < 0) {
+                    document.getElementById('d-tcpa').textContent = 'ALEJÁNDOSE';
+                    riskEl.textContent = 'SEGURO';
+                    riskEl.className = 'risk-badge risk-safe';
+                } else {
+                    const mins = Math.floor(arpa.tcpaMin);
+                    const secs = Math.floor((arpa.tcpaMin - mins) * 60);
+                    document.getElementById('d-tcpa').textContent = `${mins}m ${String(secs).padStart(2, '0')}s`;
+
+                    if (arpa.cpa < 0.8 && arpa.tcpaMin < 20) {
+                        riskEl.textContent = 'ALERTA COLISIÓN';
+                        riskEl.className = 'risk-badge risk-danger';
+                    } else if (arpa.cpa < 1.5 && arpa.tcpaMin < 30) {
+                        riskEl.textContent = 'PRECAUCIÓN';
+                        riskEl.className = 'risk-badge risk-warn';
+                    } else {
+                        riskEl.textContent = 'SEGURO';
+                        riskEl.className = 'risk-badge risk-safe';
+                    }
+                }
+            }
+
+            // --- CONTROLES E INTERACCIÓN ---
+            function bindControls() {
+                window.addEventListener('resize', resizeCanvas);
+
+                // Escala de tiempo
+                document.querySelectorAll('.time-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        state.timeScale = parseFloat(btn.dataset.scale);
+                        const labels = { 1: '1x (REAL)', 10: '10x (MODERADO)', 25: '25x (RÁPIDO)', 50: '50x (TURBO)' };
+                        document.getElementById('lbl-time').textContent = labels[state.timeScale] || `${state.timeScale}x`;
+                        document.getElementById('hud-time').textContent = `${state.timeScale}x`;
+                    });
+                });
+
+                // Alcance (Range)
+                document.querySelectorAll('.range-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        state.rangeNM = parseFloat(btn.dataset.range);
+                        pCtx.clearRect(0, 0, width, height);
+                        targets.forEach(t => { t.trail = []; });
+
+                        const ringStep = (state.rangeNM / 4).toFixed(state.rangeNM < 3 ? 2 : 1);
+                        document.getElementById('lbl-range').textContent = `${state.rangeNM} NM`;
+                        document.getElementById('hud-rng').textContent = `${state.rangeNM.toFixed(1)} / ${ringStep} NM`;
+                        updateTelemetryUI();
+                    });
+                });
+
+                // Orientación
+                const btnNorth = document.getElementById('btn-north');
+                const btnHead = document.getElementById('btn-head');
+                btnNorth.addEventListener('click', () => {
+                    state.orientation = 'north-up';
+                    btnNorth.classList.add('active');
+                    btnHead.classList.remove('active');
+                    document.getElementById('hud-mode').textContent = 'NORTH-UP';
+                    pCtx.clearRect(0, 0, width, height);
+                });
+                btnHead.addEventListener('click', () => {
+                    state.orientation = 'head-up';
+                    btnHead.classList.add('active');
+                    btnNorth.classList.remove('active');
+                    document.getElementById('hud-mode').textContent = 'HEAD-UP';
+                    pCtx.clearRect(0, 0, width, height);
+                });
+
+                // Sliders
+                document.getElementById('sl-gain').addEventListener('input', (e) => {
+                    state.gain = parseInt(e.target.value, 10);
+                    document.getElementById('lbl-gain').textContent = `${state.gain}%`;
+                });
+                document.getElementById('sl-sea').addEventListener('input', (e) => {
+                    state.seaClutter = parseInt(e.target.value, 10);
+                    document.getElementById('lbl-sea').textContent = `${state.seaClutter}%`;
+                });
+                document.getElementById('sl-rpm').addEventListener('input', (e) => {
+                    state.rpm = parseInt(e.target.value, 10);
+                    document.getElementById('lbl-rpm').textContent = `${state.rpm} RPM`;
+                });
+                document.getElementById('sl-own-spd').addEventListener('input', (e) => {
+                    state.ownShip.speed = parseFloat(e.target.value);
+                    const txt = `${state.ownShip.speed.toFixed(1)} KN`;
+                    document.getElementById('lbl-own-spd').textContent = txt;
+                    document.getElementById('hud-spd').textContent = txt;
+                });
+
+                // Timón
+                const btnPort = document.getElementById('btn-port');
+                const btnSteady = document.getElementById('btn-steady');
+                const btnStbd = document.getElementById('btn-stbd');
+                const setTurn = (rate, activeBtn) => {
+                    state.ownShip.turnRate = rate;
+                    [btnPort, btnSteady, btnStbd].forEach(b => b.classList.remove('active'));
+                    activeBtn.classList.add('active');
+                };
+                btnPort.addEventListener('click', () => setTurn(-2.5, btnPort));
+                btnSteady.addEventListener('click', () => setTurn(0, btnSteady));
+                btnStbd.addEventListener('click', () => setTurn(2.5, btnStbd));
+
+                // Fósforo Verde / Ámbar
+                document.getElementById('btn-phosphor').addEventListener('click', (e) => {
+                    state.phosphor = state.phosphor === 'green' ? 'amber' : 'green';
+                    document.body.classList.toggle('theme-amber', state.phosphor === 'amber');
+                    e.target.textContent = state.phosphor === 'amber' ? 'FÓSFORO: ÁMBAR' : 'FÓSFORO: VERDE';
+                    pCtx.clearRect(0, 0, width, height);
+                });
+
+                // Audio Ping
+                document.getElementById('btn-audio').addEventListener('click', (e) => {
+                    state.audioOn = !state.audioOn;
+                    e.target.classList.toggle('active', state.audioOn);
+                    e.target.textContent = state.audioOn ? 'AUDIO PING: ON' : 'AUDIO PING: OFF';
+                    if (state.audioOn) playPing(true);
+                });
+
+                // Liberar objetivo
+                document.getElementById('btn-clear-tgt').addEventListener('click', () => {
+                    state.selectedId = null;
+                    updateTelemetryUI();
+                });
+
+                // Puntero y clic sobre el radar
+                const updateCursor = (clientX, clientY) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const nm = pxToNm(clientX - rect.left, clientY - rect.top);
+                    const { rng, brg } = getRngBrg(nm.x, nm.y);
+                    document.getElementById('cursor-info').textContent = rng <= state.rangeNM
+                        ? `${brg.toFixed(1).padStart(5, '0')}° / ${rng.toFixed(2)} NM`
+                        : 'FUERA DE RANGO';
+                };
+
+                const selectAtPoint = (clientX, clientY) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const px = clientX - rect.left;
+                    const py = clientY - rect.top;
+
+                    let best = null;
+                    let bestDist = 26;
+                    for (let i = 0; i < targets.length; i++) {
+                        const t = targets[i];
+                        if (Math.hypot(t.x, t.y) > state.rangeNM) continue;
+                        const pos = nmToPx(t.x, t.y);
+                        const d = Math.hypot(px - pos.x, py - pos.y);
+                        if (d < bestDist) {
+                            bestDist = d;
+                            best = t;
+                        }
+                    }
+                    if (best) {
+                        state.selectedId = best.id;
+                        updateTelemetryUI();
+                    }
+                };
+
+                canvas.addEventListener('mousemove', (e) => updateCursor(e.clientX, e.clientY));
+                canvas.addEventListener('click', (e) => selectAtPoint(e.clientX, e.clientY));
+                canvas.addEventListener('touchstart', (e) => {
+                    if (e.touches.length > 0) {
+                        updateCursor(e.touches[0].clientX, e.touches[0].clientY);
+                        selectAtPoint(e.touches[0].clientX, e.touches[0].clientY);
+                    }
+                }, { passive: true });
+            }
+
+            // --- BUCLE PRINCIPAL INMEDIATO ---
+            let lastTimestamp = performance.now();
+            let uiAccumulator = 0;
+
+            function loop(now) {
+                const dt = Math.min(0.1, Math.max(0.001, (now - lastTimestamp) / 1000));
+                lastTimestamp = now;
+
+                updatePhysics(dt);
+                render();
+
+                uiAccumulator += dt;
+                if (uiAccumulator >= 0.2) {
+                    updateTelemetryUI();
+                    uiAccumulator = 0;
+                }
+
+                requestAnimationFrame(loop);
+            }
+
+            // Arrancar inmediatamente sin esperar recursos externos
+            resizeCanvas();
+            bindControls();
+            updateTelemetryUI();
+            requestAnimationFrame(loop);
+        })();
+    </script>
+</body>
+</html>

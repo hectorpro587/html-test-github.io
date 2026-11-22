@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HtmlTest</title>
+  <meta name="description" content="Descubre las capacidades de HTML, CSS y JS!">
+  <style>
+    :root {
+      --bg: #0f1115;
+      --surface: #171a21;
+      --surface-hover: #1e222b;
+      --border: #2a2f3a;
+      --text: #e6e8ee;
+      --muted: #9aa3b2;
+      --accent: #4f8cff;
+      --accent-2: #7c5cff;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---------- Header ---------- */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand {
+      font-size: 1.25rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .btn-github {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .btn-github:hover {
+      background: var(--surface-hover);
+      border-color: var(--accent);
+    }
+
+    .btn-github svg { width: 18px; height: 18px; fill: currentColor; }
+
+    /* ---------- Hero ---------- */
+    .hero {
+      text-align: center;
+      padding: 4rem 1.5rem 2rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 3.5rem);
+      font-weight: 800;
+      margin-bottom: 0.75rem;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: clamp(1rem, 2vw, 1.2rem);
+    }
+
+    /* ---------- Examples ---------- */
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1rem 1.5rem 3rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards;
+    }
+
+    .card:nth-child(2) { animation-delay: 0.15s; }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+      box-shadow: 0 10px 30px rgba(79, 140, 255, 0.15);
+    }
+
+    .card-tag {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    .card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .card p {
+      color: var(--muted);
+      font-size: 0.97rem;
+      flex: 1;
+    }
+
+    .card-link {
+      margin-top: 1.25rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    /* ---------- Footer ---------- */
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 600px) {
+      header { padding: 1rem; justify-content: center; text-align: center; }
+      .hero { padding: 3rem 1rem 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">HtmlTest</div>
+    <a class="btn-github" href="https://github.com/hectorpro587" target="_blank" rel="noopener noreferrer">
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38
+        0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+        -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
+        .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
+        -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 014 0c1.53-1.04 2.2-.82
+        2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65
+        3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01
+        0 0016 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+      GitHub
+    </a>
+  </header>
+
+  <section class="hero">
+    <h1>HtmlTest</h1>
+    <p>Descubre las capacidades de HTML, CSS y JS!</p>
+  </section>
+
+  <main>
+    <div class="grid">
+
+      <a class="card" href="BouncingBall.html">
+        <span class="card-tag">Demo 3D</span>
+        <h2>BouncingBall</h2>
+        <p>Una simulación inspirada en la demo Boing Ball de la Commodore Amiga que demuestra que HTML puede renderizar cosas en 3D.</p>
+        <span class="card-link">Ver ejemplo →</span>
+      </a>
+
+      <a class="card" href="ShipRadar.html">
+        <span class="card-tag">Simulación interactiva</span>
+        <h2>ShipRadar</h2>
+        <p>Una simulación interactiva de radar de barco que recrea el barrido circular de una pantalla náutica real. Observa cómo aparecen y se desvanecen los ecos de otras embarcaciones y objetos cercanos conforme la antena gira, con controles para ajustar el rango, la velocidad de barrido y la sensibilidad, todo funcionando directamente en el navegador con HTML, CSS y JavaScript.</p>
+        <span class="card-link">Ver ejemplo →</span>
+      </a>
+
+    </div>
+  </main>
+
+  <footer>
+    <p>Más ejemplos próximamente, siempre que los límites de uso diario de la IA que uso me lo permitan.</p>
+    <p>&copy; <span id="year"></span> hectorpro587</p>
+  </footer>
+
+  <script>
+    // Muestra el año actual en el pie de página
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+
+</body>
+</html>
